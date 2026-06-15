@@ -49,7 +49,6 @@
     import * as Lucide from 'https://esm.sh/lucide-react@0.292.0';
     
     // CORREÇÃO: Utilizando a CDN oficial do Google (gstatic) para o Firebase
-    // Isso resolve o erro "Component auth has not been registered yet"
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
     import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
     import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
@@ -62,10 +61,11 @@
     } = Lucide;
 
     // ============================================================================
-    // 1. CONFIGURAÇÃO DO SEU FIREBASE (Baseado no seu print)
+    // 1. CONFIGURAÇÃO DO SEU FIREBASE (ATENÇÃO AQUI 👇)
     // ============================================================================
     const firebaseConfig = {
-      apiKey: "COLOQUE_SUA_API_KEY_AQUI", // Copie a chave que começa com AIzaSy... do seu print
+      // ⚠️ SUBSTITUA O TEXTO ABAIXO PELA SUA CHAVE REAL QUE COMEÇA COM AIzaSy...
+      apiKey: "COLOQUE_SUA_API_KEY_AQUI", 
       authDomain: "fichas-fd833.firebaseapp.com",
       projectId: "fichas-fd833",
       storageBucket: "fichas-fd833.firebasestorage.app",
@@ -101,6 +101,26 @@
       { id: 6, name: 'Queijo, muçarela', kcal: 327, carbs: 3.0, proteins: 22.6, totalFats: 25.0, satFats: 16.0, transFats: 0.8, fiber: 0, sodium: 580 },
     ];
 
+    const mockFichas = [
+      {
+        id: 'PF-001',
+        code: 'PF-001',
+        name: 'Pão Francês Exemplo',
+        category: 'Pães',
+        version: 1,
+        status: 'active',
+        updatedAt: '15/06/2026',
+        coverImage: 'https://images.unsplash.com/photo-1598373182133-52452f7691ef?w=800&q=80',
+        general: { brand: 'IMAC', description: 'Pão francês (Dados de Teste).' },
+        technical: { unitsPerPackage: 71, packageWeight: '5 kg', unitWeight: '70g', bakingTemp: '200°C (lastro)', bakingTime: '15 min', vapor: 'Sim', perTray: 20 },
+        ingredients: { text: 'Farinha, água, sal...', containsGluten: true, containsLactose: false, allergensText: 'Trigo' },
+        conservation: { frozen: '-12°C', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
+        validity: { package: '60 dias', postBaking: 'Diário', postDefrost: 'Não recongelar' },
+        preparationSteps: [],
+        nutritional: { portion: 50, measure: '1 unidade', kcal: 140, carbs: 24, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 242 }
+      }
+    ];
+
     const emptyFicha = {
       id: '', code: '', name: '', category: '', version: 1, status: 'draft', coverImage: '',
       general: { brand: 'IMAC', description: '' },
@@ -131,27 +151,50 @@
         logo: ''
       });
 
-      // Autenticação Firebase (Anônima baseada no seu print)
+      // Autenticação Firebase com Tratamento de Erros de API Key
       useEffect(() => {
+        if (firebaseConfig.apiKey === "COLOQUE_SUA_API_KEY_AQUI") {
+          alert("Atenção: Você esqueceu de inserir a sua 'apiKey' do Firebase no código (linha 58). O sistema irá rodar com dados de teste locais e as informações não serão guardadas na nuvem.");
+          setUser({ uid: 'local', name: 'Modo Teste Offline', role: 'admin' });
+          setLoadingAuth(false);
+          return;
+        }
+
         const initAuth = async () => {
           try {
             await signInAnonymously(auth);
           } catch (err) {
             console.error("Erro de Autenticação:", err);
+            alert("A sua API Key parece estar inválida ou incorreta. O sistema carregará no modo de teste offline.");
+            setUser({ uid: 'local', name: 'Modo Teste Offline', role: 'admin' });
+            setLoadingAuth(false); // Desbloqueia o ecrã de loading
           }
         };
         initAuth();
         
         const unsub = onAuthStateChanged(auth, (u) => {
-          setUser(u ? { ...u, name: 'Equipe Qualidade', role: 'admin' } : null);
+          if (u) {
+            setUser({ ...u, name: 'Equipe Qualidade', role: 'admin' });
+          }
+          setLoadingAuth(false);
+        }, (err) => {
+          console.error("Erro de estado Auth:", err);
           setLoadingAuth(false);
         });
-        return () => unsub();
+        
+        return () => unsub && unsub();
       }, []);
 
-      // Sincronizar dados do Firestore
+      // Sincronizar dados do Firestore (Com Fallback para Local se não configurado)
       useEffect(() => {
         if (!user) return;
+        
+        // Se estiver em modo local/offline devido à ausência de chave
+        if (user.uid === 'local') {
+          setFichas(mockFichas);
+          return;
+        }
+
         const colRef = collection(db, 'fichas');
         const unsub = onSnapshot(colRef, (snap) => {
           if (!snap.empty) {
@@ -159,8 +202,12 @@
           } else {
             setFichas([]);
           }
-        }, (err) => console.error("Erro Firestore:", err));
-        return () => unsub();
+        }, (err) => {
+           console.error("Erro Firestore:", err);
+           alert("Erro ao ler dados do Firestore. Verifique se as permissões (Rules) da base de dados permitem leitura/escrita.");
+        });
+        
+        return () => unsub && unsub();
       }, [user]);
 
       const handleSaveFicha = async (fichaData) => {
@@ -168,26 +215,36 @@
         const saveId = isNew ? `FICHA-${Date.now()}` : fichaData.id;
         const payload = { ...fichaData, id: saveId, updatedAt: new Date().toLocaleDateString('pt-BR') };
         
+        if (user?.uid === 'local') {
+          setFichas(prev => isNew ? [payload, ...prev] : prev.map(f => f.id === saveId ? payload : f));
+          setCurrentView('list');
+          return;
+        }
+
         try {
           await setDoc(doc(db, 'fichas', saveId), payload);
           setCurrentView('list');
         } catch (error) {
-          alert("Erro ao salvar. Verifique as regras do Firestore.");
+          alert("Erro ao salvar no banco. Verifique as regras de segurança do Firestore.");
           console.error(error);
         }
       };
 
       const handleDelete = async (id) => {
         if (confirm("Tem certeza que deseja excluir esta Ficha Técnica?")) {
+          if (user?.uid === 'local') {
+            setFichas(prev => prev.filter(f => f.id !== id));
+            return;
+          }
           try {
             await deleteDoc(doc(db, 'fichas', id));
           } catch (error) {
-            alert("Erro ao excluir.");
+            alert("Erro ao excluir. Verifique as regras do Firestore.");
           }
         }
       };
 
-      if (loadingAuth) return <div className="h-screen w-full flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F4B400]"></div></div>;
+      if (loadingAuth) return <div className="h-screen w-full flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#F4B400]"></div></div>;
 
       return (
         <div className="flex h-screen bg-gray-50 text-gray-800 overflow-hidden">
