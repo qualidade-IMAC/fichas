@@ -894,54 +894,63 @@
               </div>
               <div className="text-right"><h1 className="text-[22px] font-black text-black uppercase tracking-widest border-b-2 border-black inline-block mb-1">Ficha Técnica</h1><h2 className="text-2xl font-black text-[#5c3a21] mt-1">{ficha.name}</h2></div>
             </header>
-            <div className="grid grid-cols-[1fr_1.4fr] gap-8 flex-1 mb-4">
-              <div className="space-y-5">
-                <div className="border-[6px] border-[#F4B400] rounded-lg overflow-hidden h-52 w-full avoid-break"><img src={ficha.coverImage} className="w-full h-full object-cover" /></div>
-                <div className="bg-white rounded border border-gray-200 p-4 text-[13px] space-y-3 shadow-sm text-gray-800 leading-snug avoid-break">
-                  <p><span className="font-bold text-black">Unidades por Pacote:</span><br/> Média de {ficha.technical.unitsPerPackage} unidades.</p>
-                  <p><span className="font-bold text-black">Peso do Pacote:</span> {ficha.technical.packageWeight}</p>
-                  <p><span className="font-bold text-black">Quantidade por tela:</span> {ficha.technical.perTray} unidades.</p>
-                  
-                  <div className="border-t border-gray-200 pt-2 mt-2">
-                    <span className="font-bold text-black block mb-1">Parâmetros de Assamento:</span>
-                    {(!ficha.technical.ovens || ficha.technical.ovens.length === 0) ? (
-                        <p className="text-gray-500 italic text-[11px]">Não informado</p>
-                    ) : (
-                        <div className="space-y-1.5">
-                        {ficha.technical.ovens.map((oven, i) => (
-                            <div key={i} className="bg-gray-50 p-1.5 rounded border border-gray-200 text-[11px] leading-tight">
-                                <span className="font-bold text-[#5c3a21]">{oven.name}:</span> {oven.temp} | {oven.time} | Vapor: {oven.vapor}
-                            </div>
-                        ))}
-                        </div>
-                    )}
-                  </div>
-                </div>
-                <div className="avoid-break"><h3 className="font-black text-black bg-[#F4B400] px-3 py-1.5 text-center text-xs uppercase rounded-t border-b-2 border-[#5c3a21]">Armazenamento</h3><div className="border border-black bg-white text-[10px]"><div className="grid grid-cols-3 text-center font-bold border-b border-black divide-x divide-black bg-gray-100"><div className="p-1">MODO</div><div className="p-1">FECHADA</div><div className="p-1">ABERTA</div></div><div className="grid grid-cols-3 text-center divide-x divide-black items-center"><div className="p-2 font-bold bg-gray-50">Freezer<br/>({ficha.conservation.frozen})</div><div className="p-2">{ficha.conservation.closedPackage}</div><div className="p-2">{ficha.conservation.openPackage}</div></div></div></div>
-                <div className="grid grid-cols-2 gap-2 text-center text-xs avoid-break"><div className="border border-gray-300 rounded overflow-hidden"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Pacote</div><div className="p-2 bg-gray-50">{ficha.validity.package}</div></div><div className="border border-gray-300 rounded overflow-hidden flex flex-col"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Assado</div><div className="p-2 bg-gray-50 flex-1 flex items-center justify-center font-bold">{ficha.validity.postBaking}</div></div></div>
-              </div>
-              <div className="space-y-6">
-                <section className="avoid-break"><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Ingredientes</h3><p className="text-[13px] text-justify leading-snug">{ficha.ingredients.text}</p><p className="mt-2 text-[12px] font-black uppercase leading-tight bg-gray-100 p-2 rounded">{ficha.ingredients.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients.allergensText && `ALÉRGICOS: DERIVADOS DE ${ficha.ingredients.allergensText}.`}</p></section>
-                <section className="avoid-break"><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Informação Nutricional</h3><div className="border-[3px] border-black p-1.5 w-full max-w-[85%] font-sans text-black"><table className="w-full text-[12px]"><thead><tr className="border-b-[4px] border-black"><th colSpan="3" className="text-lg font-black pt-0 pb-1">INFORMAÇÃO NUTRICIONAL</th></tr><tr className="border-b-[2px] border-black"><th colSpan="3" className="font-normal text-left py-1 text-[11px] leading-tight"><span className="font-bold">Porção: {ficha.nutritional.portion}g ({ficha.nutritional.measure})</span></th></tr><tr className="border-b border-black font-black text-right"><td className="py-1 text-left"></td><td className="py-1 w-16">100 g</td><td className="py-1 w-16">% VD*</td></tr></thead><tbody>
-                  <NutriPrintRow label="Valor energético (kcal)" val={ficha.nutritional.kcal} vd={Math.round((ficha.nutritional.kcal / 2000) * 100)} />
-                  <NutriPrintRow label="Carboidratos (g)" val={ficha.nutritional.carbs} vd={Math.round((ficha.nutritional.carbs / 300) * 100)} />
-                  <NutriPrintRow label="Proteínas (g)" val={ficha.nutritional.proteins} vd={Math.round((ficha.nutritional.proteins / 50) * 100)} />
-                  <NutriRow label="Gorduras totais (g)" val={ficha.nutritional.totalFats} vd={Math.round((ficha.nutritional.totalFats / 55) * 100)} />
-                  <NutriRow label="Gorduras saturadas (g)" val={ficha.nutritional.satFats} vd={Math.round((ficha.nutritional.satFats / 22) * 100)} />
-                  <NutriRow label="Gorduras trans (g)" val={ficha.nutritional.transFats} vd={ficha.nutritional.transFats > 0 ? '**' : '0'} />
-                  <NutriRow label="Fibra alimentar (g)" val={ficha.nutritional.fiber} vd={Math.round((ficha.nutritional.fiber / 25) * 100)} />
-                  <NutriPrintRow label="Sódio (mg)" val={ficha.nutritional.sodium} vd={Math.round((ficha.nutritional.sodium / 2000) * 100)} borderBottom={false} />
-                </tbody></table></div><p className="text-[9px] mt-1 text-black">*Percentual de valores diários fornecidos pela porção.</p></section>
-                <section><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-3">Modo de Preparo</h3><div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                  {ficha.preparationSteps.map((step, idx) => (
-                    <div key={idx} className="relative avoid-break">
-                      <div className="font-black text-[13px] text-[#5c3a21] mb-1 leading-none"><span className="text-[#F4B400] text-lg mr-1">•</span>{step.title}:</div>
-                      {step.image && (<div className="w-full h-[100px] mb-1.5 bg-gray-100 rounded overflow-hidden border border-gray-200"><img src={step.image} className="w-full h-full object-cover" /></div>)}
-                      <p className="text-[10px] text-justify leading-tight text-gray-800">{step.desc}</p>
+            
+            <div className="flex flex-col flex-1 mb-4">
+              <div className="grid grid-cols-[1fr_1.4fr] gap-8 mb-6">
+                <div className="space-y-5">
+                  <div className="border-[6px] border-[#F4B400] rounded-lg overflow-hidden h-52 w-full avoid-break"><img src={ficha.coverImage} className="w-full h-full object-cover" /></div>
+                  <div className="bg-white rounded border border-gray-200 p-4 text-[13px] space-y-3 shadow-sm text-gray-800 leading-snug avoid-break">
+                    <p><span className="font-bold text-black">Unidades por Pacote:</span><br/> Média de {ficha.technical.unitsPerPackage} unidades.</p>
+                    <p><span className="font-bold text-black">Peso do Pacote:</span> {ficha.technical.packageWeight}</p>
+                    <p><span className="font-bold text-black">Quantidade por tela:</span> {ficha.technical.perTray} unidades.</p>
+                    
+                    <div className="border-t border-gray-200 pt-2 mt-2">
+                      <span className="font-bold text-black block mb-1">Parâmetros de Assamento:</span>
+                      {(!ficha.technical.ovens || ficha.technical.ovens.length === 0) ? (
+                          <p className="text-gray-500 italic text-[11px]">Não informado</p>
+                      ) : (
+                          <div className="space-y-1.5">
+                          {ficha.technical.ovens.map((oven, i) => (
+                              <div key={i} className="bg-gray-50 p-1.5 rounded border border-gray-200 text-[11px] leading-tight">
+                                  <span className="font-bold text-[#5c3a21]">{oven.name}:</span> {oven.temp} | {oven.time} | Vapor: {oven.vapor}
+                              </div>
+                          ))}
+                          </div>
+                      )}
                     </div>
-                  ))}
-                </div></section>
+                  </div>
+                  <div className="avoid-break"><h3 className="font-black text-black bg-[#F4B400] px-3 py-1.5 text-center text-xs uppercase rounded-t border-b-2 border-[#5c3a21]">Armazenamento</h3><div className="border border-black bg-white text-[10px]"><div className="grid grid-cols-3 text-center font-bold border-b border-black divide-x divide-black bg-gray-100"><div className="p-1">MODO</div><div className="p-1">FECHADA</div><div className="p-1">ABERTA</div></div><div className="grid grid-cols-3 text-center divide-x divide-black items-center"><div className="p-2 font-bold bg-gray-50">Freezer<br/>({ficha.conservation.frozen})</div><div className="p-2">{ficha.conservation.closedPackage}</div><div className="p-2">{ficha.conservation.openPackage}</div></div></div></div>
+                  <div className="grid grid-cols-2 gap-2 text-center text-xs avoid-break"><div className="border border-gray-300 rounded overflow-hidden"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Pacote</div><div className="p-2 bg-gray-50">{ficha.validity.package}</div></div><div className="border border-gray-300 rounded overflow-hidden flex flex-col"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Assado</div><div className="p-2 bg-gray-50 flex-1 flex items-center justify-center font-bold">{ficha.validity.postBaking}</div></div></div>
+                </div>
+                <div className="space-y-6">
+                  <section className="avoid-break"><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Ingredientes</h3><p className="text-[13px] text-justify leading-snug">{ficha.ingredients.text}</p><p className="mt-2 text-[12px] font-black uppercase leading-tight bg-gray-100 p-2 rounded">{ficha.ingredients.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients.allergensText && `ALÉRGICOS: DERIVADOS DE ${ficha.ingredients.allergensText}.`}</p></section>
+                  <section className="avoid-break"><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Informação Nutricional</h3><div className="border-[3px] border-black p-1.5 w-full max-w-[85%] font-sans text-black"><table className="w-full text-[12px]"><thead><tr className="border-b-[4px] border-black"><th colSpan="3" className="text-lg font-black pt-0 pb-1">INFORMAÇÃO NUTRICIONAL</th></tr><tr className="border-b-[2px] border-black"><th colSpan="3" className="font-normal text-left py-1 text-[11px] leading-tight"><span className="font-bold">Porção: {ficha.nutritional.portion}g ({ficha.nutritional.measure})</span></th></tr><tr className="border-b border-black font-black text-right"><td className="py-1 text-left"></td><td className="py-1 w-16">100 g</td><td className="py-1 w-16">% VD*</td></tr></thead><tbody>
+                    <NutriPrintRow label="Valor energético (kcal)" val={ficha.nutritional.kcal} vd={Math.round((ficha.nutritional.kcal / 2000) * 100)} />
+                    <NutriPrintRow label="Carboidratos (g)" val={ficha.nutritional.carbs} vd={Math.round((ficha.nutritional.carbs / 300) * 100)} />
+                    <NutriPrintRow label="Proteínas (g)" val={ficha.nutritional.proteins} vd={Math.round((ficha.nutritional.proteins / 50) * 100)} />
+                    <NutriRow label="Gorduras totais (g)" val={ficha.nutritional.totalFats} vd={Math.round((ficha.nutritional.totalFats / 55) * 100)} />
+                    <NutriRow label="Gorduras saturadas (g)" val={ficha.nutritional.satFats} vd={Math.round((ficha.nutritional.satFats / 22) * 100)} />
+                    <NutriRow label="Gorduras trans (g)" val={ficha.nutritional.transFats} vd={ficha.nutritional.transFats > 0 ? '**' : '0'} />
+                    <NutriRow label="Fibra alimentar (g)" val={ficha.nutritional.fiber} vd={Math.round((ficha.nutritional.fiber / 25) * 100)} />
+                    <NutriPrintRow label="Sódio (mg)" val={ficha.nutritional.sodium} vd={Math.round((ficha.nutritional.sodium / 2000) * 100)} borderBottom={false} />
+                  </tbody></table></div><p className="text-[9px] mt-1 text-black">*Percentual de valores diários fornecidos pela porção.</p></section>
+                </div>
               </div>
+              
+              {ficha.preparationSteps && ficha.preparationSteps.length > 0 && (
+                <section className="avoid-break mt-4">
+                  <h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-3">Modo de Preparo</h3>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                    {ficha.preparationSteps.map((step, idx) => (
+                      <div key={idx} className="relative avoid-break">
+                        <div className="font-black text-[13px] text-[#5c3a21] mb-1 leading-none"><span className="text-[#F4B400] text-lg mr-1">•</span>{step.title}:</div>
+                        {step.image && (<div className="w-full h-[140px] mb-1.5 bg-gray-100 rounded overflow-hidden border border-gray-200"><img src={step.image} className="w-full h-full object-cover" /></div>)}
+                        <p className="text-[11px] text-justify leading-tight text-gray-800">{step.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
             <footer className="mt-auto border-t-2 border-black pt-2 text-center text-[10px] text-black font-medium leading-tight"><p className="font-black text-xs text-[#5c3a21]">{companySettings.name}</p><p>{companySettings.address} - Telefone: {companySettings.phone}</p></footer>
           </div>
