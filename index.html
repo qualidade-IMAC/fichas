@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema IMAC - Fichas Técnicas</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Babel Standalone (Para rodar React no navegador) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* Esconde barra de rolagem mas mantém funcional */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Estilos de Impressão (PDF Pixel Perfect) */
+    .pdf-container {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 10px auto 40px auto;
+      padding: 10mm 15mm;
+      background-color: white;
+      display: flex;
+      flex-direction: column;
+    }
+    @media print {
+      body { background-color: white; margin: 0; padding: 0; }
+      .no-print { display: none !important; }
+      .pdf-container { 
+        margin: 0; 
+        box-shadow: none; 
+        page-break-after: always;
+      }
+      .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+    }
+    @page { margin: 0; size: A4 portrait; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+  <div id="root"></div>
+
+  <!-- Script Principal React -->
+  <script type="text/babel" data-type="module">
+    import React, { useState, useEffect } from 'https://esm.sh/react@18.2.0';
+    import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
+    import * as Lucide from 'https://esm.sh/lucide-react@0.292.0';
+    
+    // CORREÇÃO: Utilizando a CDN oficial do Google (gstatic) para o Firebase
+    // Isso resolve o erro "Component auth has not been registered yet"
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+    import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+    // Extraindo Ícones
+    const {
+      LayoutDashboard, FileText, Users, Settings, Plus, Search, Filter,
+      Edit, Printer, CheckCircle, Info, Database, Upload, Trash2, ArrowLeft,
+      Building, MapPin, Phone, Mail, X, Image: ImageIcon, Save
+    } = Lucide;
+
+    // ============================================================================
+    // 1. CONFIGURAÇÃO DO SEU FIREBASE (Baseado no seu print)
+    // ============================================================================
+    const firebaseConfig = {
+      apiKey: "COLOQUE_SUA_API_KEY_AQUI", // Copie a chave que começa com AIzaSy... do seu print
+      authDomain: "fichas-fd833.firebaseapp.com",
+      projectId: "fichas-fd833",
+      storageBucket: "fichas-fd833.firebasestorage.app",
+      messagingSenderId: "809866493261",
+      appId: "1:809866493261:web:cdddabb0039736e4c64b04"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // ============================================================================
+    // COMPONENTE VETORIAL DA LOGO E BANCO TACO
+    // ============================================================================
+    const ImacLogoSVG = ({ className = "h-12" }) => (
+      <svg className={className} viewBox="0 0 160 65" xmlns="http://www.w3.org/2000/svg">
+        <text x="0" y="55" fontFamily="Arial, Helvetica, sans-serif" fontWeight="900" fontSize="50" fill="#5c3a21" letterSpacing="-2">IMAC</text>
+        <g transform="translate(108, -5) scale(0.65)">
+           <circle cx="50" cy="50" r="35" fill="#F4B400" />
+           <path d="M 35 45 Q 40 36 45 45" stroke="white" strokeWidth="6" strokeLinecap="round" fill="none" />
+           <path d="M 55 45 Q 60 36 65 45" stroke="white" strokeWidth="6" strokeLinecap="round" fill="none" />
+           <path d="M 30 55 Q 50 75 70 50" stroke="white" strokeWidth="6" strokeLinecap="round" fill="none" />
+        </g>
+      </svg>
+    );
+
+    const mockTACO = [
+      { id: 1, name: 'Pão, francês', kcal: 300, carbs: 58.6, proteins: 8.0, totalFats: 3.1, satFats: 0.9, transFats: 0, fiber: 2.3, sodium: 648 },
+      { id: 2, name: 'Farinha de trigo, especial', kcal: 346, carbs: 73.3, proteins: 9.8, totalFats: 1.4, satFats: 0.3, transFats: 0, fiber: 2.3, sodium: 1 },
+      { id: 3, name: 'Leite, vaca, integral', kcal: 57, carbs: 4.5, proteins: 3.3, totalFats: 3.0, satFats: 1.7, transFats: 0, fiber: 0, sodium: 50 },
+      { id: 4, name: 'Ovo, de galinha, inteiro, cru', kcal: 143, carbs: 1.6, proteins: 13.0, totalFats: 8.9, satFats: 2.7, transFats: 0, fiber: 0, sodium: 168 },
+      { id: 5, name: 'Manteiga, sem sal', kcal: 726, carbs: 0.1, proteins: 0.4, totalFats: 82.4, satFats: 49.3, transFats: 2.0, fiber: 0, sodium: 8 },
+      { id: 6, name: 'Queijo, muçarela', kcal: 327, carbs: 3.0, proteins: 22.6, totalFats: 25.0, satFats: 16.0, transFats: 0.8, fiber: 0, sodium: 580 },
+    ];
+
+    const emptyFicha = {
+      id: '', code: '', name: '', category: '', version: 1, status: 'draft', coverImage: '',
+      general: { brand: 'IMAC', description: '' },
+      technical: { unitsPerPackage: 0, packageWeight: '', unitWeight: '', bakingTemp: '', bakingTime: '', vapor: 'Não', perTray: 0 },
+      ingredients: { text: '', containsGluten: false, containsLactose: false, allergensText: '' },
+      conservation: { frozen: '', refrigerated: '', ambient: '', openPackage: '', closedPackage: '' },
+      validity: { package: '', postBaking: '', postDefrost: '' },
+      preparationSteps: [],
+      nutritional: { portion: 0, measure: '', kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 }
+    };
+
+    // ============================================================================
+    // COMPONENTE PRINCIPAL APP
+    // ============================================================================
+    function App() {
+      const [user, setUser] = useState(null);
+      const [loadingAuth, setLoadingAuth] = useState(true);
+      const [currentView, setCurrentView] = useState('dashboard');
+      const [fichas, setFichas] = useState([]);
+      const [selectedFicha, setSelectedFicha] = useState(null);
+      const [sidebarOpen, setSidebarOpen] = useState(true);
+
+      const [companySettings, setCompanySettings] = useState({
+        name: 'IMAC Indústria de Massas Congeladas',
+        address: 'Av. Cel. Cícero Sá, 4000 - Camará, Aquiraz/CE, CEP: 61700-000',
+        phone: '(85) 3878-1249',
+        email: 'qualidade@imaccongelados.com.br',
+        logo: ''
+      });
+
+      // Autenticação Firebase (Anônima baseada no seu print)
+      useEffect(() => {
+        const initAuth = async () => {
+          try {
+            await signInAnonymously(auth);
+          } catch (err) {
+            console.error("Erro de Autenticação:", err);
+          }
+        };
+        initAuth();
+        
+        const unsub = onAuthStateChanged(auth, (u) => {
+          setUser(u ? { ...u, name: 'Equipe Qualidade', role: 'admin' } : null);
+          setLoadingAuth(false);
+        });
+        return () => unsub();
+      }, []);
+
+      // Sincronizar dados do Firestore
+      useEffect(() => {
+        if (!user) return;
+        const colRef = collection(db, 'fichas');
+        const unsub = onSnapshot(colRef, (snap) => {
+          if (!snap.empty) {
+            setFichas(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          } else {
+            setFichas([]);
+          }
+        }, (err) => console.error("Erro Firestore:", err));
+        return () => unsub();
+      }, [user]);
+
+      const handleSaveFicha = async (fichaData) => {
+        const isNew = !fichaData.id;
+        const saveId = isNew ? `FICHA-${Date.now()}` : fichaData.id;
+        const payload = { ...fichaData, id: saveId, updatedAt: new Date().toLocaleDateString('pt-BR') };
+        
+        try {
+          await setDoc(doc(db, 'fichas', saveId), payload);
+          setCurrentView('list');
+        } catch (error) {
+          alert("Erro ao salvar. Verifique as regras do Firestore.");
+          console.error(error);
+        }
+      };
+
+      const handleDelete = async (id) => {
+        if (confirm("Tem certeza que deseja excluir esta Ficha Técnica?")) {
+          try {
+            await deleteDoc(doc(db, 'fichas', id));
+          } catch (error) {
+            alert("Erro ao excluir.");
+          }
+        }
+      };
+
+      if (loadingAuth) return <div className="h-screen w-full flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F4B400]"></div></div>;
+
+      return (
+        <div className="flex h-screen bg-gray-50 text-gray-800 overflow-hidden">
+          {/* SIDEBAR */}
+          <aside className={`no-print bg-[#5c3a21] text-white transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'} flex flex-col shadow-2xl z-20`}>
+            <div className="p-4 flex items-center justify-center h-20 border-b border-[#4a2e1a]">
+              <div className="flex items-center space-x-2 font-black cursor-pointer" onClick={() => setCurrentView('dashboard')}>
+                 {sidebarOpen ? (
+                    companySettings.logo ? <img src={companySettings.logo} alt="Logo" className="h-10 max-w-full object-contain" /> : <ImacLogoSVG className="h-10" />
+                 ) : (
+                    <div className="w-10 h-10 bg-[#F4B400] rounded-full flex items-center justify-center text-[#5c3a21] text-sm font-black tracking-tighter">IM</div>
+                 )}
+              </div>
+            </div>
+            <nav className="flex-1 py-6 space-y-2 px-3 overflow-y-auto">
+              <NavItem icon={<LayoutDashboard size={20}/>} label="Dashboard" active={currentView === 'dashboard'} onClick={() => setCurrentView('dashboard')} open={sidebarOpen} />
+              <NavItem icon={<FileText size={20}/>} label="Fichas Técnicas" active={currentView === 'list'} onClick={() => setCurrentView('list')} open={sidebarOpen} />
+              <NavItem icon={<Users size={20}/>} label="Utilizadores" active={currentView === 'users'} onClick={() => setCurrentView('users')} open={sidebarOpen} />
+              <NavItem icon={<Settings size={20}/>} label="Configurações" active={currentView === 'settings'} onClick={() => setCurrentView('settings')} open={sidebarOpen} />
+            </nav>
+            <div className="p-4 border-t border-[#4a2e1a] text-sm text-[#F4B400] flex justify-center cursor-pointer hover:bg-[#4a2e1a] transition-colors" onClick={() => setSidebarOpen(!sidebarOpen)}>
+              {sidebarOpen ? "« Recolher Menu" : "»"}
+            </div>
+          </aside>
+
+          {/* MAIN CONTENT AREA */}
+          <main className="flex-1 flex flex-col h-full relative">
+            <header className="no-print h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 shadow-sm z-10">
+              <h1 className="text-2xl font-bold text-[#5c3a21]">
+                {currentView === 'dashboard' && 'Dashboard de Qualidade'}
+                {currentView === 'list' && 'Gerenciamento de Fichas Técnicas'}
+                {currentView === 'users' && 'Controle de Utilizadores'}
+                {currentView === 'settings' && 'Configurações do Sistema'}
+                {currentView === 'form' && (selectedFicha?.id ? `Editar Ficha: ${selectedFicha.name}` : 'Nova Ficha Técnica')}
+                {currentView === 'pdf' && 'Visualização de Impressão PDF'}
+              </h1>
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full bg-[#F4B400] text-[#5c3a21] flex items-center justify-center font-bold text-lg shadow-inner">CQ</div>
+                <div className="hidden md:block text-sm">
+                  <p className="font-bold text-[#5c3a21]">{user?.name}</p>
+                  <p className="text-gray-500 text-xs uppercase">{user?.role}</p>
+                </div>
+              </div>
+            </header>
+
+            <div className="flex-1 overflow-auto bg-gray-50 p-6 h-[calc(100vh-80px)] relative">
+              {currentView === 'dashboard' && <DashboardView fichas={fichas} onNavigate={setCurrentView} />}
+              {currentView === 'list' && <ListView fichas={fichas} onEdit={(f) => { setSelectedFicha(f); setCurrentView('form'); }} onPdf={(f) => { setSelectedFicha(f); setCurrentView('pdf'); }} onNew={() => { setSelectedFicha(emptyFicha); setCurrentView('form'); }} onDelete={handleDelete} />}
+              {currentView === 'form' && <FormView ficha={selectedFicha} onBack={() => setCurrentView('list')} onSave={handleSaveFicha} />}
+              {currentView === 'pdf' && <PDFView ficha={selectedFicha} onBack={() => setCurrentView('list')} companySettings={companySettings} />}
+              {currentView === 'users' && <UsersView />}
+              {currentView === 'settings' && <SettingsView companySettings={companySettings} setCompanySettings={setCompanySettings} />}
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    // ============================================================================
+    // COMPONENTES SECUNDÁRIOS
+    // ============================================================================
+    const NavItem = ({ icon, label, active, onClick, open }) => (
+      <div onClick={onClick} className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-all ${active ? 'bg-[#F4B400] text-[#5c3a21] font-bold shadow-md' : 'text-gray-300 hover:bg-[#4a2e1a] hover:text-white font-medium'}`}>
+        {icon}
+        {open && <span>{label}</span>}
+      </div>
+    );
+
+    const StatCard = ({ title, value, icon, color }) => (
+      <div className={`p-6 rounded-xl border shadow-sm flex items-center space-x-4 ${color}`}>
+        <div className="p-3 bg-gray-50 rounded-lg shadow-sm border border-gray-100">{icon}</div>
+        <div>
+          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">{title}</p>
+          <h3 className="text-3xl font-black text-[#5c3a21]">{value}</h3>
+        </div>
+      </div>
+    );
+
+    const DashboardView = ({ fichas, onNavigate }) => {
+      const ativos = fichas.filter(f => f.status === 'active').length;
+      return (
+        <div className="space-y-6 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <StatCard title="Total Cadastradas" value={fichas.length} icon={<FileText size={24} className="text-[#5c3a21]" />} color="bg-white border-gray-200" />
+            <StatCard title="Produtos Ativos" value={ativos} icon={<CheckCircle size={24} className="text-green-600" />} color="bg-white border-l-4 border-l-green-500" />
+            <StatCard title="Rascunhos" value={fichas.length - ativos} icon={<Edit size={24} className="text-gray-500" />} color="bg-white border-l-4 border-l-gray-400" />
+            <StatCard title="Total no Banco" value={fichas.length} icon={<Database size={24} className="text-[#F4B400]" />} color="bg-white border-l-4 border-l-[#F4B400]" />
+          </div>
+        </div>
+      );
+    };
+
+    const ListView = ({ fichas, onEdit, onPdf, onNew, onDelete }) => {
+      const [search, setSearch] = useState('');
+      const filtered = fichas.filter(f => f.name.toLowerCase().includes(search.toLowerCase()) || f.code.toLowerCase().includes(search.toLowerCase()));
+
+      return (
+        <div className="space-y-6 max-w-7xl mx-auto h-full flex flex-col pb-10">
+          <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+            <div className="relative w-72">
+              <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+              <input type="text" placeholder="Buscar por nome ou código..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F4B400] outline-none text-sm" />
+            </div>
+            <button onClick={onNew} className="bg-[#F4B400] hover:bg-[#d9a000] text-[#5c3a21] font-bold px-5 py-2 rounded-lg shadow flex items-center space-x-2">
+              <Plus size={18} /> <span>Nova Ficha Técnica</span>
+            </button>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex-1 overflow-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-[#5c3a21] text-white uppercase font-bold text-xs sticky top-0 z-10">
+                <tr>
+                  <th className="px-6 py-4">Produto</th><th className="px-6 py-4">Categoria</th><th className="px-6 py-4">Status</th><th className="px-6 py-4 text-center">Revisão</th><th className="px-6 py-4 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? <tr><td colSpan="5" className="text-center py-10 text-gray-500">Nenhuma ficha técnica no banco de dados.</td></tr> : filtered.map(f => (
+                  <tr key={f.id} className="border-b border-gray-100 hover:bg-[#fffdf5]">
+                    <td className="px-6 py-4 font-medium flex items-center space-x-4">
+                        {f.coverImage ? <img src={f.coverImage} alt={f.name} className="w-12 h-12 rounded object-cover border border-gray-200 shadow-sm" /> : <div className="w-12 h-12 rounded bg-gray-100 flex items-center justify-center text-gray-400"><ImageIcon size={20}/></div>}
+                        <div><div className="font-bold text-[#5c3a21] text-base">{f.name}</div><div className="text-xs text-gray-500 font-mono mt-0.5">{f.code}</div></div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600 font-medium">{f.category}</td>
+                    <td className="px-6 py-4"><span className={`px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider border ${f.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>{f.status === 'active' ? 'Ativo' : 'Rascunho'}</span></td>
+                    <td className="px-6 py-4 text-center text-gray-500 font-mono text-xs">v{f.version}.0<br/><span className="text-[10px] text-gray-400">{f.updatedAt}</span></td>
+                    <td className="px-6 py-4 text-right space-x-1">
+                      <button onClick={() => onPdf(f)} className="p-2 text-gray-400 hover:text-[#5c3a21] hover:bg-[#F4B400] rounded"><Printer size={18} /></button>
+                      <button onClick={() => onEdit(f)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"><Edit size={18} /></button>
+                      <button onClick={() => onDelete(f.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 size={18} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    };
+
+    const SettingsView = ({ companySettings, setCompanySettings }) => {
+      const handleLogoUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => setCompanySettings({ ...companySettings, logo: reader.result });
+          reader.readAsDataURL(file);
+        }
+      };
+      return (
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <h2 className="text-xl font-bold text-[#5c3a21] mb-6 border-b pb-3 flex items-center"><Building className="mr-3 text-[#F4B400]" /> Dados da Empresa</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2 space-y-2 bg-gray-50 p-4 rounded border border-gray-200">
+                <label className="text-xs font-bold text-gray-600 uppercase">Logo da Empresa</label>
+                <div className="flex items-center space-x-4">
+                  {companySettings.logo ? <img src={companySettings.logo} className="h-16 w-auto border bg-white p-1" /> : <div className="h-16 w-32 border-dashed border-2 flex items-center justify-center text-xs">Sem Logo</div>}
+                  <input type="file" accept="image/*" onChange={handleLogoUpload} className="text-sm cursor-pointer" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const UsersView = () => (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <h2 className="text-xl font-bold text-[#5c3a21] mb-6 border-b pb-3 flex items-center"><Users className="mr-3 text-[#F4B400]" /> Gestão de Utilizadores</h2>
+          <p className="text-sm text-gray-600">A gestão de acessos é feita diretamente pelo painel do Firebase Authentication.</p>
+        </div>
+      </div>
+    );
+
+    const FormView = ({ ficha, onBack, onSave }) => {
+      const [activeTab, setActiveTab] = useState(1);
+      const [formData, setFormData] = useState(JSON.parse(JSON.stringify(ficha)));
+      const [tacoModalOpen, setTacoModalOpen] = useState(false);
+      const [tacoSearchTerm, setTacoSearchTerm] = useState('');
+      const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+      const tabs = [{ id: 1, label: 'Gerais' }, { id: 2, label: 'Técnicos' }, { id: 3, label: 'Ingredientes' }, { id: 4, label: 'Conservação/Validade' }, { id: 6, label: 'Preparo' }, { id: 7, label: 'Nutricional' }];
+
+      const updateNested = (cat, field, val) => setFormData(p => ({ ...p, [cat]: { ...p[cat], [field]: val } }));
+      const addPrepStep = () => setFormData({ ...formData, preparationSteps: [...formData.preparationSteps, { id: Date.now(), title: '', desc: '', image: '' }] });
+      const removePrepStep = (id) => setFormData({ ...formData, preparationSteps: formData.preparationSteps.filter(s => s.id !== id) });
+      const updatePrepStep = (id, field, value) => setFormData({ ...formData, preparationSteps: formData.preparationSteps.map(s => s.id === id ? { ...s, [field]: value } : s) });
+      
+      const handleImageUpload = (id, e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const r = new FileReader();
+          r.onloadend = () => updatePrepStep(id, 'image', r.result);
+          r.readAsDataURL(file);
+        }
+      };
+
+      const filteredTaco = mockTACO.filter(item => item.name.toLowerCase().includes(tacoSearchTerm.toLowerCase()));
+      const applyTacoItem = (item) => {
+        const factor = (parseFloat(formData.nutritional.portion) || 100) / 100;
+        const calc = (val) => (val * factor).toFixed(1);
+        setFormData(p => ({
+          ...p, nutritional: { ...p.nutritional, kcal: calc(item.kcal), carbs: calc(item.carbs), proteins: calc(item.proteins), totalFats: calc(item.totalFats), satFats: calc(item.satFats), transFats: calc(item.transFats), fiber: calc(item.fiber), sodium: calc(item.sodium) }
+        }));
+        setTacoModalOpen(false);
+      };
+
+      return (
+        <div className="max-w-6xl mx-auto bg-white rounded-xl shadow border border-gray-200 flex flex-col h-full relative">
+          
+          {showConfirmModal && (
+            <div className="absolute inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+                <div className="p-6 text-center space-y-4">
+                  <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto shadow-inner"><Save size={32} /></div>
+                  <h3 className="text-xl font-bold text-[#5c3a21]">Salvar Ficha Técnica?</h3>
+                  <p className="text-sm text-gray-500">Tem certeza que deseja salvar as alterações?</p>
+                </div>
+                <div className="bg-gray-50 p-4 flex justify-end space-x-3 border-t border-gray-200">
+                  <button onClick={() => setShowConfirmModal(false)} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded">Cancelar</button>
+                  <button onClick={() => { setShowConfirmModal(false); onSave(formData); }} className="bg-[#5c3a21] hover:bg-[#4a2e1a] text-white px-6 py-2 rounded shadow font-bold">Confirmar</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tacoModalOpen && (
+            <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80%] flex flex-col overflow-hidden">
+                <div className="bg-[#5c3a21] text-white p-4 flex justify-between items-center">
+                  <h3 className="font-bold flex items-center"><Database className="mr-2" size={18}/> Banco de Dados TACO</h3>
+                  <button onClick={() => setTacoModalOpen(false)} className="hover:text-[#F4B400]"><X size={20}/></button>
+                </div>
+                <div className="p-4 border-b border-gray-200">
+                  <input type="text" placeholder="Pesquisar alimento..." value={tacoSearchTerm} onChange={(e) => setTacoSearchTerm(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#F4B400] outline-none" />
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50">
+                  {filteredTaco.map(item => (
+                    <div key={item.id} className="bg-white p-3 rounded border border-gray-200 flex justify-between items-center">
+                      <div><h4 className="font-bold text-[#5c3a21] text-sm">{item.name}</h4></div>
+                      <button onClick={() => applyTacoItem(item)} className="bg-[#F4B400] text-[#5c3a21] px-3 py-1.5 rounded text-xs font-bold">Importar</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+            <button onClick={onBack} className="flex items-center space-x-2 text-gray-500 hover:text-[#5c3a21] font-medium"><ArrowLeft size={18} /> <span>Voltar</span></button>
+            <div className="font-black text-[#5c3a21] text-lg uppercase">{formData.id ? 'Edição de Ficha Técnica' : 'Nova Ficha Técnica'}</div>
+            <button onClick={() => setShowConfirmModal(true)} className="bg-[#5c3a21] text-white px-6 py-2 rounded shadow font-bold flex items-center space-x-2"><Save size={18} /> <span>Salvar Ficha</span></button>
+          </div>
+
+          <div className="flex border-b border-gray-200 overflow-x-auto bg-gray-50 px-2 scrollbar-hide">
+            {tabs.map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-5 py-3 text-sm font-bold border-b-2 ${activeTab === tab.id ? 'border-[#F4B400] text-[#5c3a21] bg-white' : 'border-transparent text-gray-500 hover:text-[#5c3a21]'}`}>{tab.id}. {tab.label}</button>
+            ))}
+          </div>
+
+          <div className="flex-1 p-6 overflow-y-auto bg-white">
+            {activeTab === 1 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="md:col-span-2 space-y-5">
+                  <div className="grid grid-cols-2 gap-4">
+                    <InputGroup label="Nome do Produto" value={formData.name} onChange={v => setFormData({...formData, name: v})} />
+                    <InputGroup label="Código Interno" value={formData.code} onChange={v => setFormData({...formData, code: v})} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <InputGroup label="Categoria" value={formData.category} onChange={v => setFormData({...formData, category: v})} />
+                    <InputGroup label="Marca" value={formData.general.brand} onChange={v => updateNested('general', 'brand', v)} />
+                  </div>
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-xs font-bold text-gray-700 uppercase">Descrição Comercial</label>
+                    <textarea rows="4" className="p-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#F4B400] outline-none text-sm" value={formData.general.description} onChange={e => updateNested('general', 'description', e.target.value)} />
+                  </div>
+                  <div className="flex flex-col space-y-1 w-1/2">
+                    <label className="text-xs font-bold text-gray-700 uppercase">Status do Produto</label>
+                    <select className="p-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#F4B400] outline-none text-sm" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                      <option value="active">Ativo (Produção)</option><option value="draft">Rascunho</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 uppercase block mb-1">Foto Principal (URL)</label>
+                  <input type="text" placeholder="Cole o link da imagem aqui..." value={formData.coverImage} onChange={e => setFormData({...formData, coverImage: e.target.value})} className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#F4B400] outline-none text-sm mb-2" />
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg h-56 flex flex-col items-center justify-center bg-gray-50 relative overflow-hidden">
+                    {formData.coverImage ? <img src={formData.coverImage} className="absolute inset-0 w-full h-full object-cover" /> : <div className="text-center text-gray-400 text-sm"><ImageIcon size={32} className="mx-auto mb-2" />Sem Imagem</div>}
+                  </div>
+                </div>
+              </div>
+            )}
+            {activeTab === 2 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                <InputGroup label="Unidades por Pacote" type="number" value={formData.technical.unitsPerPackage} onChange={v => updateNested('technical', 'unitsPerPackage', v)} />
+                <InputGroup label="Peso do Pacote" value={formData.technical.packageWeight} onChange={v => updateNested('technical', 'packageWeight', v)} />
+                <InputGroup label="Peso por Unidade" value={formData.technical.unitWeight} onChange={v => updateNested('technical', 'unitWeight', v)} />
+                <InputGroup label="Temp Forno" value={formData.technical.bakingTemp} onChange={v => updateNested('technical', 'bakingTemp', v)} />
+                <InputGroup label="Tempo Forno" value={formData.technical.bakingTime} onChange={v => updateNested('technical', 'bakingTime', v)} />
+                <InputGroup label="Quantidade por Tela" type="number" value={formData.technical.perTray} onChange={v => updateNested('technical', 'perTray', v)} />
+              </div>
+            )}
+            {activeTab === 3 && (
+              <div className="space-y-6">
+                <textarea rows="6" className="w-full p-3 border border-gray-300 rounded outline-none text-sm" value={formData.ingredients.text} onChange={e => updateNested('ingredients', 'text', e.target.value)} placeholder="Ingredientes..." />
+                <div className="bg-gray-50 p-4 rounded border grid grid-cols-2 gap-4">
+                   <label className="flex items-center space-x-2 font-bold text-sm"><input type="checkbox" checked={formData.ingredients.containsGluten} onChange={e => updateNested('ingredients', 'containsGluten', e.target.checked)} /> <span>Contém Glúten</span></label>
+                   <label className="flex items-center space-x-2 font-bold text-sm"><input type="checkbox" checked={formData.ingredients.containsLactose} onChange={e => updateNested('ingredients', 'containsLactose', e.target.checked)} /> <span>Contém Lactose</span></label>
+                   <div className="col-span-2"><InputGroup label="Alérgicos (Derivados)" value={formData.ingredients.allergensText} onChange={v => updateNested('ingredients', 'allergensText', v)} /></div>
+                </div>
+              </div>
+            )}
+            {activeTab === 4 && (
+              <div className="grid grid-cols-2 gap-6">
+                <InputGroup label="Validade do Pacote Original" value={formData.validity.package} onChange={v => updateNested('validity', 'package', v)} />
+                <InputGroup label="Validade Após Assamento" value={formData.validity.postBaking} onChange={v => updateNested('validity', 'postBaking', v)} />
+                <InputGroup label="Freezer" value={formData.conservation.frozen} onChange={v => updateNested('conservation', 'frozen', v)} />
+                <InputGroup label="Embalagem Fechada" value={formData.conservation.closedPackage} onChange={v => updateNested('conservation', 'closedPackage', v)} />
+              </div>
+            )}
+            {activeTab === 6 && (
+              <div className="space-y-4">
+                <button onClick={addPrepStep} className="bg-[#5c3a21] text-white px-3 py-1.5 rounded text-sm font-bold flex items-center space-x-1 mb-4"><Plus size={16}/> <span>Adicionar Etapa</span></button>
+                <div className="grid grid-cols-2 gap-4">
+                  {formData.preparationSteps.map((step, index) => (
+                    <div key={step.id} className="border p-3 relative bg-gray-50 flex">
+                      <button onClick={() => removePrepStep(step.id)} className="absolute top-2 right-2 text-red-500"><Trash2 size={16}/></button>
+                      <div className="w-20 h-20 bg-white border border-dashed flex-shrink-0 relative flex items-center justify-center mr-3">
+                        {step.image ? <img src={step.image} className="w-full h-full object-cover"/> : <label className="cursor-pointer text-xs text-center"><input type="file" className="hidden" onChange={(e) => handleImageUpload(step.id, e)}/>Foto</label>}
+                      </div>
+                      <div className="flex-1 flex flex-col">
+                        <input type="text" placeholder="Título" value={step.title} onChange={e => updatePrepStep(step.id, 'title', e.target.value)} className="font-bold text-sm mb-1 bg-transparent border-b outline-none" />
+                        <textarea placeholder="Descrição" value={step.desc} onChange={e => updatePrepStep(step.id, 'desc', e.target.value)} className="text-xs bg-transparent outline-none flex-1 resize-none" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {activeTab === 7 && (
+              <div className="space-y-4">
+                <button onClick={() => setTacoModalOpen(true)} className="bg-[#5c3a21] text-white px-4 py-2 rounded text-xs font-bold uppercase"><Database className="inline mr-2" size={14} /> Buscar Tabela TACO</button>
+                <div className="grid grid-cols-2 gap-4 pb-4"><InputGroup label="Porção (g)" type="number" value={formData.nutritional.portion} onChange={v => updateNested('nutritional', 'portion', v)} /><InputGroup label="Medida Caseira" value={formData.nutritional.measure} onChange={v => updateNested('nutritional', 'measure', v)} /></div>
+                <table className="w-full text-sm border">
+                  <thead className="bg-[#5c3a21] text-white"><tr><th className="p-2">Nutriente</th><th className="p-2">Qtd. Porção</th><th className="p-2">% VD</th></tr></thead>
+                  <tbody>
+                    <NutriRow label="Kcal" val={formData.nutritional.kcal} onChange={v => updateNested('nutritional', 'kcal', v)} refVD={2000} />
+                    <NutriRow label="Carboidratos" val={formData.nutritional.carbs} onChange={v => updateNested('nutritional', 'carbs', v)} refVD={300} />
+                    <NutriRow label="Proteínas" val={formData.nutritional.proteins} onChange={v => updateNested('nutritional', 'proteins', v)} refVD={50} />
+                    <NutriRow label="Gorduras Totais" val={formData.nutritional.totalFats} onChange={v => updateNested('nutritional', 'totalFats', v)} refVD={55} />
+                    <NutriRow label="Sódio" val={formData.nutritional.sodium} onChange={v => updateNested('nutritional', 'sodium', v)} refVD={2000} />
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    const InputGroup = ({ label, type = "text", value, onChange, placeholder }) => (
+      <div className="flex flex-col space-y-1">
+        <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wide">{label}</label>
+        <input type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="p-2 border border-gray-300 rounded outline-none text-sm text-gray-800" />
+      </div>
+    );
+
+    const NutriRow = ({ label, val, onChange, refVD }) => (
+      <tr className="border-b border-gray-100">
+        <td className="p-2">{label}</td>
+        <td className="p-2"><input type="number" value={val} onChange={e => onChange(e.target.value)} className="w-full p-1 border rounded" /></td>
+        <td className="p-2 font-bold text-gray-500">{refVD > 0 ? Math.round((parseFloat(val || 0) / refVD) * 100) : 0}%</td>
+      </tr>
+    );
+
+    const PDFView = ({ ficha, onBack, companySettings }) => {
+      if (!ficha) return null;
+      return (
+        <div className="w-full flex flex-col items-center pb-20">
+          <div className="no-print w-full max-w-[210mm] bg-white p-4 rounded-xl shadow border mb-6 flex justify-between items-center sticky top-4 z-50">
+            <button onClick={onBack} className="flex items-center space-x-2 text-sm"><ArrowLeft size={16} /> <span>Voltar à Edição</span></button>
+            <button onClick={() => window.print()} className="bg-[#5c3a21] text-[#F4B400] px-6 py-2 rounded font-black uppercase text-sm flex items-center space-x-2"><Printer size={18} /> <span>Imprimir A4</span></button>
+          </div>
+          <div className="pdf-container shadow-2xl relative">
+            <header className="flex justify-between items-end border-b-4 border-[#F4B400] pb-4 mb-6 avoid-break">
+              <div className="flex items-center space-x-4">
+                 <div className="relative flex items-center mr-2">{companySettings.logo ? <img src={companySettings.logo} className="h-16 max-w-[200px] object-contain" /> : <ImacLogoSVG className="h-16" />}</div>
+                 <div className="pl-4 border-l-2 border-gray-300"><p className="text-xs uppercase font-black text-gray-700 tracking-wider">Indústria de Massas Congeladas</p><p className="font-bold text-lg text-black">Controle de Qualidade</p></div>
+              </div>
+              <div className="text-right"><h1 className="text-[22px] font-black text-black uppercase tracking-widest border-b-2 border-black inline-block mb-1">Ficha Técnica</h1><h2 className="text-2xl font-black text-[#5c3a21] mt-1">{ficha.name}</h2></div>
+            </header>
+            <div className="grid grid-cols-[1fr_1.4fr] gap-8 flex-1 mb-4">
+              <div className="space-y-5">
+                <div className="border-[6px] border-[#F4B400] rounded-lg overflow-hidden h-52 w-full avoid-break"><img src={ficha.coverImage} className="w-full h-full object-cover" /></div>
+                <div className="bg-white rounded border border-gray-200 p-4 text-[13px] space-y-3 shadow-sm text-gray-800 leading-snug avoid-break">
+                  <p><span className="font-bold text-black">Unidades por Pacote:</span><br/> Média de {ficha.technical.unitsPerPackage} unidades.</p>
+                  <p><span className="font-bold text-black">Peso do Pacote:</span> {ficha.technical.packageWeight}</p>
+                  <p><span className="font-bold text-black">Temperatura:</span> {ficha.technical.bakingTemp}<br/><span className="font-bold text-black">Vapor:</span> {ficha.technical.vapor}</p>
+                  <p><span className="font-bold text-black">Tempo Assamento:</span> {ficha.technical.bakingTime}</p>
+                </div>
+                <div className="avoid-break"><h3 className="font-black text-black bg-[#F4B400] px-3 py-1.5 text-center text-xs uppercase rounded-t border-b-2 border-[#5c3a21]">Armazenamento</h3><div className="border border-black bg-white text-[10px]"><div className="grid grid-cols-3 text-center font-bold border-b border-black divide-x divide-black bg-gray-100"><div className="p-1">MODO</div><div className="p-1">FECHADA</div><div className="p-1">ABERTA</div></div><div className="grid grid-cols-3 text-center divide-x divide-black items-center"><div className="p-2 font-bold bg-gray-50">Freezer<br/>({ficha.conservation.frozen})</div><div className="p-2">{ficha.conservation.closedPackage}</div><div className="p-2">{ficha.conservation.openPackage}</div></div></div></div>
+                <div className="grid grid-cols-2 gap-2 text-center text-xs avoid-break"><div className="border border-gray-300 rounded overflow-hidden"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Pacote</div><div className="p-2 bg-gray-50">{ficha.validity.package}</div></div><div className="border border-gray-300 rounded overflow-hidden flex flex-col"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Assado</div><div className="p-2 bg-gray-50 flex-1 flex items-center justify-center font-bold">{ficha.validity.postBaking}</div></div></div>
+              </div>
+              <div className="space-y-6">
+                <section className="avoid-break"><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Ingredientes</h3><p className="text-[13px] text-justify leading-snug">{ficha.ingredients.text}</p><p className="mt-2 text-[12px] font-black uppercase leading-tight bg-gray-100 p-2 rounded">{ficha.ingredients.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients.allergensText && `ALÉRGICOS: DERIVADOS DE ${ficha.ingredients.allergensText}.`}</p></section>
+                <section className="avoid-break"><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Informação Nutricional</h3><div className="border-[3px] border-black p-1.5 w-full max-w-[85%] font-sans text-black"><table className="w-full text-[12px]"><thead><tr className="border-b-[4px] border-black"><th colSpan="3" className="text-lg font-black pt-0 pb-1">INFORMAÇÃO NUTRICIONAL</th></tr><tr className="border-b-[2px] border-black"><th colSpan="3" className="font-normal text-left py-1 text-[11px] leading-tight"><span className="font-bold">Porção: {ficha.nutritional.portion}g ({ficha.nutritional.measure})</span></th></tr><tr className="border-b border-black font-black text-right"><td className="py-1 text-left"></td><td className="py-1 w-16">100 g</td><td className="py-1 w-16">% VD*</td></tr></thead><tbody>
+                  <NutriPrintRow label="Valor energético (kcal)" val={ficha.nutritional.kcal} vd={Math.round((ficha.nutritional.kcal / 2000) * 100)} />
+                  <NutriPrintRow label="Carboidratos (g)" val={ficha.nutritional.carbs} vd={Math.round((ficha.nutritional.carbs / 300) * 100)} />
+                  <NutriPrintRow label="Proteínas (g)" val={ficha.nutritional.proteins} vd={Math.round((ficha.nutritional.proteins / 50) * 100)} />
+                  <NutriPrintRow label="Gorduras totais (g)" val={ficha.nutritional.totalFats} vd={Math.round((ficha.nutritional.totalFats / 55) * 100)} />
+                  <NutriPrintRow label="Sódio (mg)" val={ficha.nutritional.sodium} vd={Math.round((ficha.nutritional.sodium / 2000) * 100)} borderBottom={false} />
+                </tbody></table></div></section>
+                <section><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-3">Modo de Preparo</h3><div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  {ficha.preparationSteps.map((step, idx) => (
+                    <div key={idx} className="relative avoid-break"><div className="font-black text-[13px] text-[#5c3a21] mb-1 leading-none"><span className="text-[#F4B400] text-lg mr-1">•</span>{step.title}:</div>{step.image && (<div className="w-full h-[72px] mb-1.5 bg-gray-100 rounded overflow-hidden border border-gray-200"><img src={step.image} className="w-full h-full object-cover" /></div>)}<p className="text-[10px] text-justify leading-tight text-gray-800">{step.desc}</p></div>
+                  ))}
+                </div></section>
+              </div>
+            </div>
+            <footer className="mt-auto border-t-2 border-black pt-2 text-center text-[10px] text-black font-medium leading-tight"><p className="font-black text-xs text-[#5c3a21]">{companySettings.name}</p><p>{companySettings.address} - Telefone: {companySettings.phone}</p></footer>
+          </div>
+        </div>
+      );
+    };
+
+    const NutriPrintRow = ({ label, val, vd, borderBottom = true }) => (<tr className={borderBottom ? "border-b border-gray-400" : ""}><td className="py-0.5">{label}</td><td className="text-right py-0.5">{val}</td><td className="text-right py-0.5">{vd}</td></tr>);
+
+    // Inicializa o App
+    const root = createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
