@@ -57,7 +57,7 @@
     const {
       LayoutDashboard, FileText, Users, Settings, Plus, Search, Filter,
       Edit, Printer, CheckCircle, Info, Database, Upload, Trash2, ArrowLeft,
-      Building, MapPin, Phone, Mail, X, Image: ImageIcon, Save
+      Building, MapPin, Phone, Mail, X, Image: ImageIcon, Save, Calculator
     } = Lucide;
 
     // ============================================================================
@@ -77,7 +77,7 @@
     const db = getFirestore(app);
 
     // ============================================================================
-    // COMPONENTE VETORIAL DA LOGO E BANCO TACO
+    // COMPONENTE VETORIAL DA LOGO E BANCO TACO EXPANDIDO
     // ============================================================================
     const ImacLogoSVG = ({ className = "h-12" }) => (
       <svg className={className} viewBox="0 0 160 65" xmlns="http://www.w3.org/2000/svg">
@@ -91,13 +91,18 @@
       </svg>
     );
 
+    // Valores Nutricionais baseados em 100g de produto
     const mockTACO = [
       { id: 1, name: 'Pão, francês', kcal: 300, carbs: 58.6, proteins: 8.0, totalFats: 3.1, satFats: 0.9, transFats: 0, fiber: 2.3, sodium: 648 },
       { id: 2, name: 'Farinha de trigo, especial', kcal: 346, carbs: 73.3, proteins: 9.8, totalFats: 1.4, satFats: 0.3, transFats: 0, fiber: 2.3, sodium: 1 },
       { id: 3, name: 'Leite, vaca, integral', kcal: 57, carbs: 4.5, proteins: 3.3, totalFats: 3.0, satFats: 1.7, transFats: 0, fiber: 0, sodium: 50 },
       { id: 4, name: 'Ovo, de galinha, inteiro, cru', kcal: 143, carbs: 1.6, proteins: 13.0, totalFats: 8.9, satFats: 2.7, transFats: 0, fiber: 0, sodium: 168 },
       { id: 5, name: 'Manteiga, sem sal', kcal: 726, carbs: 0.1, proteins: 0.4, totalFats: 82.4, satFats: 49.3, transFats: 2.0, fiber: 0, sodium: 8 },
-      { id: 6, name: 'Queijo, muçarela', kcal: 327, carbs: 3.0, proteins: 22.6, totalFats: 25.0, satFats: 16.0, transFats: 0.8, fiber: 0, sodium: 580 },
+      { id: 6, name: 'Margarina com sal', kcal: 717, carbs: 0, proteins: 0, totalFats: 81.0, satFats: 23.0, transFats: 15.0, fiber: 0, sodium: 800 },
+      { id: 7, name: 'Açúcar, cristal', kcal: 387, carbs: 99.6, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 1 },
+      { id: 8, name: 'Sal refinado', kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 39000 },
+      { id: 9, name: 'Queijo, muçarela', kcal: 327, carbs: 3.0, proteins: 22.6, totalFats: 25.0, satFats: 16.0, transFats: 0.8, fiber: 0, sodium: 580 },
+      { id: 10, name: 'Fermento biológico fresco', kcal: 89, carbs: 8.0, proteins: 12.0, totalFats: 1.0, satFats: 0.2, transFats: 0, fiber: 5.0, sodium: 15 },
     ];
 
     const mockFichas = [
@@ -116,7 +121,8 @@
         conservation: { frozen: '-12°C', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
         validity: { package: '60 dias', postBaking: 'Diário', postDefrost: 'Não recongelar' },
         preparationSteps: [],
-        nutritional: { portion: 50, measure: '1 unidade', kcal: 140, carbs: 24, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 242 }
+        formulation: [],
+        nutritional: { finalYield: '', portion: 50, measure: '1 unidade', kcal: 140, carbs: 24, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 242 }
       }
     ];
 
@@ -128,7 +134,8 @@
       conservation: { frozen: '', refrigerated: '', ambient: '', openPackage: '', closedPackage: '' },
       validity: { package: '', postBaking: '', postDefrost: '' },
       preparationSteps: [],
-      nutritional: { portion: 0, measure: '', kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 }
+      formulation: [], // Nova propriedade para a calculadora
+      nutritional: { finalYield: '', portion: 0, measure: '', kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 }
     };
 
     // ============================================================================
@@ -141,7 +148,7 @@
       const [fichas, setFichas] = useState([]);
       const [selectedFicha, setSelectedFicha] = useState(null);
       const [sidebarOpen, setSidebarOpen] = useState(true);
-      const [isFallbackMode, setIsFallbackMode] = useState(false); // Estado para saber se as permissões falharam
+      const [isFallbackMode, setIsFallbackMode] = useState(false);
 
       const [companySettings, setCompanySettings] = useState({
         name: 'IMAC Indústria de Massas Congeladas',
@@ -177,7 +184,7 @@
         return () => unsub && unsub();
       }, []);
 
-      // Sincronizar dados do Firestore com tratamento rígido do erro "Missing permissions"
+      // Sincronizar dados do Firestore
       useEffect(() => {
         if (!user) return;
         
@@ -196,7 +203,7 @@
         }, (err) => {
            console.error("Erro Firestore:", err);
            if (err.message && err.message.includes('Missing or insufficient permissions')) {
-               alert("⚠️ ALERTA DE PERMISSÃO DO FIREBASE!\n\nSeu banco de dados Firestore está bloqueado. Para o sistema funcionar e gravar dados, você DEVE alterar as regras do Firebase.\n\nPassos:\n1. Abra o site do Firebase.\n2. Vá em 'Firestore Database' e clique na aba 'Regras' (Rules).\n3. Altere o texto para:\nallow read, write: if true;\n4. Clique em Publicar.\n\nEnquanto não fizer isso, o sistema rodará em Modo de Teste Offline.");
+               alert("⚠️ ALERTA DE PERMISSÃO DO FIREBASE!\n\nSeu banco de dados Firestore está bloqueado. Altere as regras para allow read, write: if true;");
                setIsFallbackMode(true);
            }
         });
@@ -220,11 +227,7 @@
           setCurrentView('list');
         } catch (error) {
           console.error(error);
-          if (error.message && error.message.includes('Missing or insufficient permissions')) {
-              alert("⚠️ Permissão negada no Firebase!\nVocê ainda não alterou as 'Regras' do Firestore Database para 'allow read, write: if true;'. Alterações descartadas.");
-          } else {
-              alert("Erro ao salvar no banco: " + error.message);
-          }
+          alert("Erro ao salvar no banco: " + error.message);
         }
       };
 
@@ -237,12 +240,7 @@
           try {
             await deleteDoc(doc(db, 'fichas', id));
           } catch (error) {
-            console.error(error);
-            if (error.message && error.message.includes('Missing or insufficient permissions')) {
-                alert("⚠️ Permissão negada!\nVocê precisa alterar as Regras do Firestore para poder excluir dados.");
-            } else {
-                alert("Erro ao excluir: " + error.message);
-            }
+            alert("Erro ao excluir: " + error.message);
           }
         }
       };
@@ -425,7 +423,8 @@
 
     const FormView = ({ ficha, onBack, onSave }) => {
       const [activeTab, setActiveTab] = useState(1);
-      const [formData, setFormData] = useState(JSON.parse(JSON.stringify(ficha)));
+      // Garantir que formulation existe no state
+      const [formData, setFormData] = useState({ formulation: [], ...JSON.parse(JSON.stringify(ficha)) });
       const [tacoModalOpen, setTacoModalOpen] = useState(false);
       const [tacoSearchTerm, setTacoSearchTerm] = useState('');
       const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -455,14 +454,80 @@
         }
       };
 
+      // --- CALCULADORA DE FORMULAÇÃO (NOVA LÓGICA) ---
       const filteredTaco = mockTACO.filter(item => item.name.toLowerCase().includes(tacoSearchTerm.toLowerCase()));
-      const applyTacoItem = (item) => {
-        const factor = (parseFloat(formData.nutritional.portion) || 100) / 100;
-        const calc = (val) => (val * factor).toFixed(1);
-        setFormData(p => ({
-          ...p, nutritional: { ...p.nutritional, kcal: calc(item.kcal), carbs: calc(item.carbs), proteins: calc(item.proteins), totalFats: calc(item.totalFats), satFats: calc(item.satFats), transFats: calc(item.transFats), fiber: calc(item.fiber), sodium: calc(item.sodium) }
-        }));
+      
+      const applyTacoItemToFormulation = (item) => {
+        const newFormulation = [...(formData.formulation || []), {
+            id: Date.now(),
+            tacoId: item.id,
+            name: item.name,
+            qty: 0,
+            base: { kcal: item.kcal, carbs: item.carbs, proteins: item.proteins, totalFats: item.totalFats, satFats: item.satFats, transFats: item.transFats, fiber: item.fiber, sodium: item.sodium }
+        }];
+        recalcFormulation(newFormulation, formData.nutritional.finalYield, formData.nutritional.portion);
         setTacoModalOpen(false);
+        setTacoSearchTerm('');
+      };
+
+      const handleFormulationChange = (index, value) => {
+        const newForm = [...formData.formulation];
+        newForm[index].qty = value;
+        recalcFormulation(newForm, formData.nutritional.finalYield, formData.nutritional.portion);
+      };
+
+      const removeFormulationItem = (index) => {
+        const newForm = formData.formulation.filter((_, i) => i !== index);
+        recalcFormulation(newForm, formData.nutritional.finalYield, formData.nutritional.portion);
+      };
+
+      const recalcFormulation = (form, yieldVal, portionVal) => {
+        if (!form || form.length === 0) {
+            setFormData(prev => ({ ...prev, formulation: form }));
+            return;
+        }
+        
+        // Peso total cru da receita
+        const sumWeight = form.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+        // O rendimento final (após perda no forno). Se não informado, usa o peso cru.
+        const y = parseFloat(yieldVal) || sumWeight;
+        const p = parseFloat(portionVal) || 0;
+
+        // Fator de proporção para uma porção
+        const factor = y > 0 ? (p / y) : 0;
+
+        // Soma os totais da receita baseando-se nas quantidades brutas (qty/100 * tabelaTACO)
+        const totals = form.reduce((acc, item) => {
+           const itemFactor = Number(item.qty || 0) / 100;
+           acc.kcal += (item.base.kcal || 0) * itemFactor;
+           acc.carbs += (item.base.carbs || 0) * itemFactor;
+           acc.proteins += (item.base.proteins || 0) * itemFactor;
+           acc.totalFats += (item.base.totalFats || 0) * itemFactor;
+           acc.satFats += (item.base.satFats || 0) * itemFactor;
+           acc.transFats += (item.base.transFats || 0) * itemFactor;
+           acc.fiber += (item.base.fiber || 0) * itemFactor;
+           acc.sodium += (item.base.sodium || 0) * itemFactor;
+           return acc;
+        }, { kcal:0, carbs:0, proteins:0, totalFats:0, satFats:0, transFats:0, fiber:0, sodium:0 });
+
+        // Aplica o fator da porção aos totais e atualiza a tabela nutricional
+        setFormData(prev => ({
+           ...prev,
+           formulation: form,
+           nutritional: {
+              ...prev.nutritional,
+              finalYield: yieldVal,
+              portion: portionVal,
+              kcal: (totals.kcal * factor).toFixed(1),
+              carbs: (totals.carbs * factor).toFixed(1),
+              proteins: (totals.proteins * factor).toFixed(1),
+              totalFats: (totals.totalFats * factor).toFixed(1),
+              satFats: (totals.satFats * factor).toFixed(1),
+              transFats: (totals.transFats * factor).toFixed(1),
+              fiber: (totals.fiber * factor).toFixed(1),
+              sodium: (totals.sodium * factor).toFixed(1)
+           }
+        }));
       };
 
       return (
@@ -492,13 +557,13 @@
                   <button onClick={() => setTacoModalOpen(false)} className="hover:text-[#F4B400]"><X size={20}/></button>
                 </div>
                 <div className="p-4 border-b border-gray-200">
-                  <input type="text" placeholder="Pesquisar alimento..." value={tacoSearchTerm} onChange={(e) => setTacoSearchTerm(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#F4B400] outline-none" />
+                  <input type="text" placeholder="Pesquisar ingrediente..." value={tacoSearchTerm} onChange={(e) => setTacoSearchTerm(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#F4B400] outline-none" />
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50">
                   {filteredTaco.map(item => (
-                    <div key={item.id} className="bg-white p-3 rounded border border-gray-200 flex justify-between items-center">
+                    <div key={item.id} className="bg-white p-3 rounded border border-gray-200 flex justify-between items-center shadow-sm">
                       <div><h4 className="font-bold text-[#5c3a21] text-sm">{item.name}</h4></div>
-                      <button onClick={() => applyTacoItem(item)} className="bg-[#F4B400] text-[#5c3a21] px-3 py-1.5 rounded text-xs font-bold">Importar</button>
+                      <button onClick={() => applyTacoItemToFormulation(item)} className="bg-[#F4B400] text-[#5c3a21] px-3 py-1.5 rounded text-xs font-bold">Adicionar</button>
                     </div>
                   ))}
                 </div>
@@ -601,14 +666,31 @@
                 <button onClick={addPrepStep} className="bg-[#5c3a21] text-white px-3 py-1.5 rounded text-sm font-bold flex items-center space-x-1 mb-4"><Plus size={16}/> <span>Adicionar Etapa</span></button>
                 <div className="grid grid-cols-2 gap-4">
                   {formData.preparationSteps.map((step, index) => (
-                    <div key={step.id} className="border p-3 relative bg-gray-50 flex">
-                      <button onClick={() => removePrepStep(step.id)} className="absolute top-2 right-2 text-red-500"><Trash2 size={16}/></button>
-                      <div className="w-20 h-20 bg-white border border-dashed flex-shrink-0 relative flex items-center justify-center mr-3">
-                        {step.image ? <img src={step.image} className="w-full h-full object-cover"/> : <label className="cursor-pointer text-xs text-center"><input type="file" className="hidden" onChange={(e) => handleImageUpload(step.id, e)}/>Foto</label>}
+                    <div key={step.id} className="border p-3 relative bg-gray-50 flex shadow-sm rounded">
+                      <button onClick={() => removePrepStep(step.id)} className="absolute top-2 right-2 text-red-500 z-10"><Trash2 size={16}/></button>
+                      
+                      {/* Área da Imagem Atualizada (Formato de Visualização Amplo) */}
+                      <div className="w-28 h-20 bg-white border border-dashed flex-shrink-0 relative flex items-center justify-center mr-3 rounded overflow-hidden group">
+                        {step.image ? (
+                          <>
+                            <img src={step.image} className="w-full h-full object-cover"/>
+                            <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer text-white transition-opacity">
+                              <Upload size={16}/>
+                              <input type="file" className="hidden" onChange={(e) => handleImageUpload(step.id, e)}/>
+                            </label>
+                          </>
+                        ) : (
+                          <label className="cursor-pointer text-[10px] uppercase font-bold text-gray-400 hover:text-[#F4B400] text-center w-full h-full flex flex-col items-center justify-center">
+                             <ImageIcon size={18} className="mb-1"/>
+                             + Foto
+                             <input type="file" className="hidden" onChange={(e) => handleImageUpload(step.id, e)}/>
+                          </label>
+                        )}
                       </div>
+                      
                       <div className="flex-1 flex flex-col">
-                        <input type="text" placeholder="Título" value={step.title} onChange={e => updatePrepStep(step.id, 'title', e.target.value)} className="font-bold text-sm mb-1 bg-transparent border-b outline-none" />
-                        <textarea placeholder="Descrição" value={step.desc} onChange={e => updatePrepStep(step.id, 'desc', e.target.value)} className="text-xs bg-transparent outline-none flex-1 resize-none" />
+                        <input type="text" placeholder="Título da Etapa" value={step.title} onChange={e => updatePrepStep(step.id, 'title', e.target.value)} className="font-bold text-sm mb-1 bg-transparent border-b outline-none text-[#5c3a21]" />
+                        <textarea placeholder="Descrição do procedimento..." value={step.desc} onChange={e => updatePrepStep(step.id, 'desc', e.target.value)} className="text-xs bg-transparent outline-none flex-1 resize-none text-gray-700 mt-1" />
                       </div>
                     </div>
                   ))}
@@ -616,17 +698,48 @@
               </div>
             )}
             {activeTab === 7 && (
-              <div className="space-y-4">
-                <button onClick={() => setTacoModalOpen(true)} className="bg-[#5c3a21] text-white px-4 py-2 rounded text-xs font-bold uppercase"><Database className="inline mr-2" size={14} /> Buscar Tabela TACO</button>
-                <div className="grid grid-cols-2 gap-4 pb-4"><InputGroup label="Porção (g)" type="number" value={formData.nutritional.portion} onChange={v => updateNested('nutritional', 'portion', v)} /><InputGroup label="Medida Caseira" value={formData.nutritional.measure} onChange={v => updateNested('nutritional', 'measure', v)} /></div>
-                <table className="w-full text-sm border">
-                  <thead className="bg-[#5c3a21] text-white"><tr><th className="p-2">Nutriente</th><th className="p-2">Qtd. Porção</th><th className="p-2">% VD</th></tr></thead>
+              <div className="space-y-6">
+                
+                {/* NOVA CALCULADORA DE FORMULAÇÃO */}
+                <div className="bg-yellow-50/50 border border-yellow-200 rounded-xl p-5 mb-6">
+                   <div className="flex justify-between items-center border-b border-yellow-200 pb-3 mb-4">
+                       <h4 className="font-bold text-[#5c3a21] flex items-center"><Calculator className="mr-2" size={18}/> Calculadora de Receita / Formulação</h4>
+                       <button onClick={() => setTacoModalOpen(true)} className="bg-[#F4B400] text-[#5c3a21] px-3 py-1.5 rounded text-xs font-bold uppercase shadow-sm">+ Adicionar Ingrediente TACO</button>
+                   </div>
+                   
+                   <div className="space-y-2 mb-4">
+                     {(!formData.formulation || formData.formulation.length === 0) ? (
+                        <p className="text-xs text-gray-500 italic text-center py-4 bg-white rounded border border-dashed border-gray-300">Nenhum ingrediente adicionado. Adicione ingredientes da TACO para calcular a tabela nutricional automaticamente.</p>
+                     ) : (
+                        formData.formulation.map((item, idx) => (
+                           <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-gray-200 shadow-sm">
+                               <span className="text-sm font-bold text-gray-700 flex-1">{item.name}</span>
+                               <div className="flex items-center space-x-2">
+                                   <input type="number" value={item.qty} placeholder="0" onChange={e => handleFormulationChange(idx, e.target.value)} className="w-20 p-1 border border-gray-300 rounded text-right text-sm focus:ring-1 focus:ring-[#F4B400] outline-none" />
+                                   <span className="text-xs font-bold text-gray-500 w-4">g</span>
+                                   <button onClick={() => removeFormulationItem(idx)} className="text-red-500 hover:bg-red-50 p-1.5 rounded transition"><Trash2 size={14}/></button>
+                               </div>
+                           </div>
+                        ))
+                     )}
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-4 mt-4 bg-white p-3 rounded border border-gray-200 shadow-sm">
+                      <InputGroup label="Rendimento Final da Receita (g)" type="number" value={formData.nutritional.finalYield || ''} onChange={v => { updateNested('nutritional', 'finalYield', v); recalcFormulation(formData.formulation, v, formData.nutritional.portion); }} placeholder="Vazio = Soma dos ingredientes" />
+                      <InputGroup label="Porção Analisada (g)" type="number" value={formData.nutritional.portion} onChange={v => { updateNested('nutritional', 'portion', v); recalcFormulation(formData.formulation, formData.nutritional.finalYield, v); }} />
+                      <div className="col-span-2"><InputGroup label="Medida Caseira" value={formData.nutritional.measure} onChange={v => updateNested('nutritional', 'measure', v)} placeholder="Ex: 1 Unidade" /></div>
+                   </div>
+                </div>
+
+                <h4 className="font-bold text-[#5c3a21] border-b pb-2">Tabela Nutricional {formData.formulation && formData.formulation.length > 0 ? '(Calculada Automaticamente)' : '(Entrada Manual)'}</h4>
+                <table className="w-full text-sm border shadow-sm">
+                  <thead className="bg-[#5c3a21] text-white"><tr><th className="p-2">Nutriente</th><th className="p-2">Qtd. na Porção</th><th className="p-2 text-center">% VD</th></tr></thead>
                   <tbody>
                     <NutriRow label="Kcal" val={formData.nutritional.kcal} onChange={v => updateNested('nutritional', 'kcal', v)} refVD={2000} />
-                    <NutriRow label="Carboidratos" val={formData.nutritional.carbs} onChange={v => updateNested('nutritional', 'carbs', v)} refVD={300} />
-                    <NutriRow label="Proteínas" val={formData.nutritional.proteins} onChange={v => updateNested('nutritional', 'proteins', v)} refVD={50} />
-                    <NutriRow label="Gorduras Totais" val={formData.nutritional.totalFats} onChange={v => updateNested('nutritional', 'totalFats', v)} refVD={55} />
-                    <NutriRow label="Sódio" val={formData.nutritional.sodium} onChange={v => updateNested('nutritional', 'sodium', v)} refVD={2000} />
+                    <NutriRow label="Carboidratos (g)" val={formData.nutritional.carbs} onChange={v => updateNested('nutritional', 'carbs', v)} refVD={300} />
+                    <NutriRow label="Proteínas (g)" val={formData.nutritional.proteins} onChange={v => updateNested('nutritional', 'proteins', v)} refVD={50} />
+                    <NutriRow label="Gorduras Totais (g)" val={formData.nutritional.totalFats} onChange={v => updateNested('nutritional', 'totalFats', v)} refVD={55} />
+                    <NutriRow label="Sódio (mg)" val={formData.nutritional.sodium} onChange={v => updateNested('nutritional', 'sodium', v)} refVD={2000} />
                   </tbody>
                 </table>
               </div>
@@ -639,15 +752,15 @@
     const InputGroup = ({ label, type = "text", value, onChange, placeholder }) => (
       <div className="flex flex-col space-y-1">
         <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wide">{label}</label>
-        <input type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="p-2 border border-gray-300 rounded outline-none text-sm text-gray-800" />
+        <input type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="p-2 border border-gray-300 rounded outline-none text-sm text-gray-800 focus:ring-1 focus:ring-[#F4B400] transition" />
       </div>
     );
 
     const NutriRow = ({ label, val, onChange, refVD }) => (
-      <tr className="border-b border-gray-100">
+      <tr className="border-b border-gray-100 bg-white hover:bg-gray-50">
         <td className="p-2">{label}</td>
-        <td className="p-2"><input type="number" value={val} onChange={e => onChange(e.target.value)} className="w-full p-1 border rounded" /></td>
-        <td className="p-2 font-bold text-gray-500">{refVD > 0 ? Math.round((parseFloat(val || 0) / refVD) * 100) : 0}%</td>
+        <td className="p-2 w-32"><input type="number" value={val} onChange={e => onChange(e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400]" /></td>
+        <td className="p-2 font-bold text-gray-500 w-24 text-center bg-gray-50">{refVD > 0 ? Math.round((parseFloat(val || 0) / refVD) * 100) : 0}%</td>
       </tr>
     );
 
@@ -690,7 +803,14 @@
                 </tbody></table></div></section>
                 <section><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-3">Modo de Preparo</h3><div className="grid grid-cols-2 gap-x-4 gap-y-3">
                   {ficha.preparationSteps.map((step, idx) => (
-                    <div key={idx} className="relative avoid-break"><div className="font-black text-[13px] text-[#5c3a21] mb-1 leading-none"><span className="text-[#F4B400] text-lg mr-1">•</span>{step.title}:</div>{step.image && (<div className="w-full h-[72px] mb-1.5 bg-gray-100 rounded overflow-hidden border border-gray-200"><img src={step.image} className="w-full h-full object-cover" /></div>)}<p className="text-[10px] text-justify leading-tight text-gray-800">{step.desc}</p></div>
+                    <div key={idx} className="relative avoid-break">
+                      <div className="font-black text-[13px] text-[#5c3a21] mb-1 leading-none"><span className="text-[#F4B400] text-lg mr-1">•</span>{step.title}:</div>
+                      
+                      {/* IMAGENS COM ALTURA EXATA PARA O FORMATO PAISAGEM / PDF */}
+                      {step.image && (<div className="w-full h-[100px] mb-1.5 bg-gray-100 rounded overflow-hidden border border-gray-200"><img src={step.image} className="w-full h-full object-cover" /></div>)}
+                      
+                      <p className="text-[10px] text-justify leading-tight text-gray-800">{step.desc}</p>
+                    </div>
                   ))}
                 </div></section>
               </div>
