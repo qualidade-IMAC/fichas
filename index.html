@@ -48,7 +48,7 @@
     import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
     import * as Lucide from 'https://esm.sh/lucide-react@0.292.0';
     
-    // CORREÇÃO: Utilizando a CDN oficial do Google (gstatic) para o Firebase
+    // Utilizando a CDN oficial do Google (gstatic) para o Firebase
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
     import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
     import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
@@ -61,11 +61,10 @@
     } = Lucide;
 
     // ============================================================================
-    // 1. CONFIGURAÇÃO DO SEU FIREBASE (ATENÇÃO AQUI 👇)
+    // 1. CONFIGURAÇÃO DO SEU FIREBASE
     // ============================================================================
     const firebaseConfig = {
-      // ⚠️ SUBSTITUA O TEXTO ABAIXO PELA SUA CHAVE REAL QUE COMEÇA COM AIzaSy...
-      apiKey: "COLOQUE_SUA_API_KEY_AQUI", 
+      apiKey: "AIzaSyClLwKGarEcm6g467w-Esi7d7CEgL36mH0", 
       authDomain: "fichas-fd833.firebaseapp.com",
       projectId: "fichas-fd833",
       storageBucket: "fichas-fd833.firebasestorage.app",
@@ -142,6 +141,7 @@
       const [fichas, setFichas] = useState([]);
       const [selectedFicha, setSelectedFicha] = useState(null);
       const [sidebarOpen, setSidebarOpen] = useState(true);
+      const [isFallbackMode, setIsFallbackMode] = useState(false); // Estado para saber se as permissões falharam
 
       const [companySettings, setCompanySettings] = useState({
         name: 'IMAC Indústria de Massas Congeladas',
@@ -151,23 +151,15 @@
         logo: ''
       });
 
-      // Autenticação Firebase com Tratamento de Erros de API Key
+      // Autenticação Firebase
       useEffect(() => {
-        if (firebaseConfig.apiKey === "COLOQUE_SUA_API_KEY_AQUI") {
-          alert("Atenção: Você esqueceu de inserir a sua 'apiKey' do Firebase no código (linha 58). O sistema irá rodar com dados de teste locais e as informações não serão guardadas na nuvem.");
-          setUser({ uid: 'local', name: 'Modo Teste Offline', role: 'admin' });
-          setLoadingAuth(false);
-          return;
-        }
-
         const initAuth = async () => {
           try {
             await signInAnonymously(auth);
           } catch (err) {
             console.error("Erro de Autenticação:", err);
-            alert("A sua API Key parece estar inválida ou incorreta. O sistema carregará no modo de teste offline.");
-            setUser({ uid: 'local', name: 'Modo Teste Offline', role: 'admin' });
-            setLoadingAuth(false); // Desbloqueia o ecrã de loading
+            alert("Erro na Autenticação Anônima. Verifique se o login Anônimo está ativado no seu Firebase Authentication.");
+            setLoadingAuth(false);
           }
         };
         initAuth();
@@ -185,14 +177,13 @@
         return () => unsub && unsub();
       }, []);
 
-      // Sincronizar dados do Firestore (Com Fallback para Local se não configurado)
+      // Sincronizar dados do Firestore com tratamento rígido do erro "Missing permissions"
       useEffect(() => {
         if (!user) return;
         
-        // Se estiver em modo local/offline devido à ausência de chave
-        if (user.uid === 'local') {
-          setFichas(mockFichas);
-          return;
+        if (isFallbackMode) {
+            setFichas(mockFichas);
+            return;
         }
 
         const colRef = collection(db, 'fichas');
@@ -204,18 +195,21 @@
           }
         }, (err) => {
            console.error("Erro Firestore:", err);
-           alert("Erro ao ler dados do Firestore. Verifique se as permissões (Rules) da base de dados permitem leitura/escrita.");
+           if (err.message && err.message.includes('Missing or insufficient permissions')) {
+               alert("⚠️ ALERTA DE PERMISSÃO DO FIREBASE!\n\nSeu banco de dados Firestore está bloqueado. Para o sistema funcionar e gravar dados, você DEVE alterar as regras do Firebase.\n\nPassos:\n1. Abra o site do Firebase.\n2. Vá em 'Firestore Database' e clique na aba 'Regras' (Rules).\n3. Altere o texto para:\nallow read, write: if true;\n4. Clique em Publicar.\n\nEnquanto não fizer isso, o sistema rodará em Modo de Teste Offline.");
+               setIsFallbackMode(true);
+           }
         });
         
         return () => unsub && unsub();
-      }, [user]);
+      }, [user, isFallbackMode]);
 
       const handleSaveFicha = async (fichaData) => {
         const isNew = !fichaData.id;
         const saveId = isNew ? `FICHA-${Date.now()}` : fichaData.id;
         const payload = { ...fichaData, id: saveId, updatedAt: new Date().toLocaleDateString('pt-BR') };
         
-        if (user?.uid === 'local') {
+        if (isFallbackMode) {
           setFichas(prev => isNew ? [payload, ...prev] : prev.map(f => f.id === saveId ? payload : f));
           setCurrentView('list');
           return;
@@ -225,21 +219,30 @@
           await setDoc(doc(db, 'fichas', saveId), payload);
           setCurrentView('list');
         } catch (error) {
-          alert("Erro ao salvar no banco. Verifique as regras de segurança do Firestore.");
           console.error(error);
+          if (error.message && error.message.includes('Missing or insufficient permissions')) {
+              alert("⚠️ Permissão negada no Firebase!\nVocê ainda não alterou as 'Regras' do Firestore Database para 'allow read, write: if true;'. Alterações descartadas.");
+          } else {
+              alert("Erro ao salvar no banco: " + error.message);
+          }
         }
       };
 
       const handleDelete = async (id) => {
         if (confirm("Tem certeza que deseja excluir esta Ficha Técnica?")) {
-          if (user?.uid === 'local') {
+          if (isFallbackMode) {
             setFichas(prev => prev.filter(f => f.id !== id));
             return;
           }
           try {
             await deleteDoc(doc(db, 'fichas', id));
           } catch (error) {
-            alert("Erro ao excluir. Verifique as regras do Firestore.");
+            console.error(error);
+            if (error.message && error.message.includes('Missing or insufficient permissions')) {
+                alert("⚠️ Permissão negada!\nVocê precisa alterar as Regras do Firestore para poder excluir dados.");
+            } else {
+                alert("Erro ao excluir: " + error.message);
+            }
           }
         }
       };
@@ -273,13 +276,14 @@
           {/* MAIN CONTENT AREA */}
           <main className="flex-1 flex flex-col h-full relative">
             <header className="no-print h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 shadow-sm z-10">
-              <h1 className="text-2xl font-bold text-[#5c3a21]">
+              <h1 className="text-2xl font-bold text-[#5c3a21] flex items-center">
                 {currentView === 'dashboard' && 'Dashboard de Qualidade'}
                 {currentView === 'list' && 'Gerenciamento de Fichas Técnicas'}
                 {currentView === 'users' && 'Controle de Utilizadores'}
                 {currentView === 'settings' && 'Configurações do Sistema'}
                 {currentView === 'form' && (selectedFicha?.id ? `Editar Ficha: ${selectedFicha.name}` : 'Nova Ficha Técnica')}
                 {currentView === 'pdf' && 'Visualização de Impressão PDF'}
+                {isFallbackMode && <span className="ml-4 text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded uppercase font-bold border border-red-200">Modo Offline (Erro Firebase)</span>}
               </h1>
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-full bg-[#F4B400] text-[#5c3a21] flex items-center justify-center font-bold text-lg shadow-inner">CQ</div>
@@ -442,6 +446,15 @@
         }
       };
 
+      const handleCoverImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const r = new FileReader();
+          r.onloadend = () => setFormData({ ...formData, coverImage: r.result });
+          r.readAsDataURL(file);
+        }
+      };
+
       const filteredTaco = mockTACO.filter(item => item.name.toLowerCase().includes(tacoSearchTerm.toLowerCase()));
       const applyTacoItem = (item) => {
         const factor = (parseFloat(formData.nutritional.portion) || 100) / 100;
@@ -529,10 +542,28 @@
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-700 uppercase block mb-1">Foto Principal (URL)</label>
-                  <input type="text" placeholder="Cole o link da imagem aqui..." value={formData.coverImage} onChange={e => setFormData({...formData, coverImage: e.target.value})} className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#F4B400] outline-none text-sm mb-2" />
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg h-56 flex flex-col items-center justify-center bg-gray-50 relative overflow-hidden">
-                    {formData.coverImage ? <img src={formData.coverImage} className="absolute inset-0 w-full h-full object-cover" /> : <div className="text-center text-gray-400 text-sm"><ImageIcon size={32} className="mx-auto mb-2" />Sem Imagem</div>}
+                  <label className="text-xs font-bold text-gray-700 uppercase block mb-1">Foto Principal</label>
+                  <div className="flex gap-2 mb-2">
+                    <input type="text" placeholder="URL da imagem..." value={formData.coverImage} onChange={e => setFormData({...formData, coverImage: e.target.value})} className="flex-1 p-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#F4B400] outline-none text-sm" />
+                    <label className="bg-gray-200 text-gray-700 px-3 py-2 rounded text-sm font-bold cursor-pointer hover:bg-gray-300 flex items-center shrink-0">
+                      <Upload size={16} className="mr-1"/> Local
+                      <input type="file" accept="image/*" className="hidden" onChange={handleCoverImageUpload}/>
+                    </label>
+                  </div>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg h-56 flex flex-col items-center justify-center bg-gray-50 relative overflow-hidden group">
+                    {formData.coverImage ? (
+                      <>
+                        <img src={formData.coverImage} className="absolute inset-0 w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                          <button className="bg-white text-[#5c3a21] px-3 py-1 rounded text-xs font-bold shadow hover:bg-gray-100" onClick={() => setFormData({...formData, coverImage: ''})}>Remover Foto</button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center text-gray-400 text-sm">
+                        <ImageIcon size={32} className="mx-auto mb-2" />
+                        Sem Imagem
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
