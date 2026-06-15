@@ -116,7 +116,7 @@
         updatedAt: '15/06/2026',
         coverImage: 'https://images.unsplash.com/photo-1598373182133-52452f7691ef?w=800&q=80',
         general: { brand: 'IMAC', description: 'Pão francês (Dados de Teste).' },
-        technical: { unitsPerPackage: 71, packageWeight: '5 kg', unitWeight: '70g', bakingTemp: '200°C (lastro)', bakingTime: '15 min', vapor: 'Sim', perTray: 20 },
+        technical: { unitsPerPackage: 71, packageWeight: '5 kg', unitWeight: '70g', perTray: 20, ovens: [{ id: 1, name: 'Forno Lastro', temp: '200°C', time: '17 min', vapor: 'Sim' }, { id: 2, name: 'Forno Turbo', temp: '175°C', time: '17 min', vapor: 'Sim' }] },
         ingredients: { text: 'Farinha, água, sal...', containsGluten: true, containsLactose: false, allergensText: 'Trigo' },
         conservation: { frozen: '-12°C', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
         validity: { package: '60 dias', postBaking: 'Diário', postDefrost: 'Não recongelar' },
@@ -129,12 +129,12 @@
     const emptyFicha = {
       id: '', code: '', name: '', category: '', version: 1, status: 'draft', coverImage: '',
       general: { brand: 'IMAC', description: '' },
-      technical: { unitsPerPackage: 0, packageWeight: '', unitWeight: '', bakingTemp: '', bakingTime: '', vapor: 'Não', perTray: 0 },
+      technical: { unitsPerPackage: 0, packageWeight: '', unitWeight: '', perTray: 0, ovens: [] },
       ingredients: { text: '', containsGluten: false, containsLactose: false, allergensText: '' },
       conservation: { frozen: '', refrigerated: '', ambient: '', openPackage: '', closedPackage: '' },
       validity: { package: '', postBaking: '', postDefrost: '' },
       preparationSteps: [],
-      formulation: [], // Nova propriedade para a calculadora
+      formulation: [], 
       nutritional: { finalYield: '', portion: 0, measure: '', kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 }
     };
 
@@ -254,9 +254,17 @@
             <div className="p-4 flex items-center justify-center h-20 border-b border-[#4a2e1a]">
               <div className="flex items-center space-x-2 font-black cursor-pointer" onClick={() => setCurrentView('dashboard')}>
                  {sidebarOpen ? (
-                    companySettings.logo ? <img src={companySettings.logo} alt="Logo" className="h-10 max-w-full object-contain" /> : <ImacLogoSVG className="h-10" />
+                    companySettings.logo ? (
+                      <div className="bg-white py-1 px-2 rounded-lg shadow-md flex items-center justify-center">
+                        <img src={companySettings.logo} alt="Logo" className="h-10 max-w-[180px] object-contain" />
+                      </div>
+                    ) : (
+                      <div className="bg-white py-1 px-2 rounded-lg shadow-md flex items-center justify-center">
+                        <ImacLogoSVG className="h-10" />
+                      </div>
+                    )
                  ) : (
-                    <div className="w-10 h-10 bg-[#F4B400] rounded-full flex items-center justify-center text-[#5c3a21] text-sm font-black tracking-tighter">IM</div>
+                    <div className="w-10 h-10 bg-[#F4B400] rounded-full flex items-center justify-center text-[#5c3a21] text-sm font-black tracking-tighter shadow-md">IM</div>
                  )}
               </div>
             </div>
@@ -423,10 +431,15 @@
 
     const FormView = ({ ficha, onBack, onSave }) => {
       const [activeTab, setActiveTab] = useState(1);
-      // Garantir que formulation existe no state
       const [formData, setFormData] = useState({ formulation: [], ...JSON.parse(JSON.stringify(ficha)) });
       const [tacoModalOpen, setTacoModalOpen] = useState(false);
       const [tacoSearchTerm, setTacoSearchTerm] = useState('');
+      
+      const [customIngModalOpen, setCustomIngModalOpen] = useState(false);
+      const [customIngData, setCustomIngData] = useState({
+        name: '', referencePortion: 100, kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0
+      });
+
       const [showConfirmModal, setShowConfirmModal] = useState(false);
 
       const tabs = [{ id: 1, label: 'Gerais' }, { id: 2, label: 'Técnicos' }, { id: 3, label: 'Ingredientes' }, { id: 4, label: 'Conservação/Validade' }, { id: 6, label: 'Preparo' }, { id: 7, label: 'Nutricional' }];
@@ -454,7 +467,21 @@
         }
       };
 
-      // --- CALCULADORA DE FORMULAÇÃO (NOVA LÓGICA) ---
+      const addOven = () => {
+        const newOvens = [...(formData.technical.ovens || []), { id: Date.now(), name: '', temp: '', time: '', vapor: 'Não' }];
+        updateNested('technical', 'ovens', newOvens);
+      };
+      
+      const removeOven = (id) => {
+        const newOvens = (formData.technical.ovens || []).filter(o => o.id !== id);
+        updateNested('technical', 'ovens', newOvens);
+      };
+      
+      const updateOven = (id, field, value) => {
+        const newOvens = (formData.technical.ovens || []).map(o => o.id === id ? { ...o, [field]: value } : o);
+        updateNested('technical', 'ovens', newOvens);
+      };
+
       const filteredTaco = mockTACO.filter(item => item.name.toLowerCase().includes(tacoSearchTerm.toLowerCase()));
       
       const applyTacoItemToFormulation = (item) => {
@@ -468,6 +495,34 @@
         recalcFormulation(newFormulation, formData.nutritional.finalYield, formData.nutritional.portion);
         setTacoModalOpen(false);
         setTacoSearchTerm('');
+      };
+
+      const addCustomIngredientToFormulation = () => {
+         if(!customIngData.name || customIngData.referencePortion <= 0) {
+             alert("Preencha o nome e certifique-se de que a porção da embalagem seja maior que 0.");
+             return;
+         }
+         const factor = 100 / parseFloat(customIngData.referencePortion);
+         const newItem = {
+             id: Date.now(),
+             tacoId: 'custom-' + Date.now(),
+             name: customIngData.name + ' (Manual)',
+             qty: 0,
+             base: {
+                 kcal: parseFloat(customIngData.kcal || 0) * factor,
+                 carbs: parseFloat(customIngData.carbs || 0) * factor,
+                 proteins: parseFloat(customIngData.proteins || 0) * factor,
+                 totalFats: parseFloat(customIngData.totalFats || 0) * factor,
+                 satFats: parseFloat(customIngData.satFats || 0) * factor,
+                 transFats: parseFloat(customIngData.transFats || 0) * factor,
+                 fiber: parseFloat(customIngData.fiber || 0) * factor,
+                 sodium: parseFloat(customIngData.sodium || 0) * factor
+             }
+         };
+         const newFormulation = [...(formData.formulation || []), newItem];
+         recalcFormulation(newFormulation, formData.nutritional.finalYield, formData.nutritional.portion);
+         setCustomIngModalOpen(false);
+         setCustomIngData({ name: '', referencePortion: 100, kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 });
       };
 
       const handleFormulationChange = (index, value) => {
@@ -486,17 +541,11 @@
             setFormData(prev => ({ ...prev, formulation: form }));
             return;
         }
-        
-        // Peso total cru da receita
         const sumWeight = form.reduce((sum, item) => sum + Number(item.qty || 0), 0);
-        // O rendimento final (após perda no forno). Se não informado, usa o peso cru.
         const y = parseFloat(yieldVal) || sumWeight;
         const p = parseFloat(portionVal) || 0;
-
-        // Fator de proporção para uma porção
         const factor = y > 0 ? (p / y) : 0;
 
-        // Soma os totais da receita baseando-se nas quantidades brutas (qty/100 * tabelaTACO)
         const totals = form.reduce((acc, item) => {
            const itemFactor = Number(item.qty || 0) / 100;
            acc.kcal += (item.base.kcal || 0) * itemFactor;
@@ -510,7 +559,6 @@
            return acc;
         }, { kcal:0, carbs:0, proteins:0, totalFats:0, satFats:0, transFats:0, fiber:0, sodium:0 });
 
-        // Aplica o fator da porção aos totais e atualiza a tabela nutricional
         setFormData(prev => ({
            ...prev,
            formulation: form,
@@ -566,6 +614,40 @@
                       <button onClick={() => applyTacoItemToFormulation(item)} className="bg-[#F4B400] text-[#5c3a21] px-3 py-1.5 rounded text-xs font-bold">Adicionar</button>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {customIngModalOpen && (
+            <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90%] flex flex-col overflow-hidden">
+                <div className="bg-[#5c3a21] text-white p-4 flex justify-between items-center">
+                  <h3 className="font-bold flex items-center"><Edit size={18} className="mr-2"/> Ingrediente Manual (Rótulo)</h3>
+                  <button onClick={() => setCustomIngModalOpen(false)} className="hover:text-[#F4B400]"><X size={20}/></button>
+                </div>
+                <div className="p-4 bg-yellow-50 border-b border-yellow-200 text-sm text-[#5c3a21]">
+                  <p>Insira os dados nutricionais exatamente como constam na <strong>tabela da embalagem</strong> do ingrediente.</p>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <InputGroup label="Nome do Ingrediente" value={customIngData.name} onChange={v => setCustomIngData({...customIngData, name: v})} placeholder="Ex: Farinha Especial Marca X" />
+                    </div>
+                    <InputGroup type="number" label="Porção na Embalagem (g)" value={customIngData.referencePortion} onChange={v => setCustomIngData({...customIngData, referencePortion: v})} placeholder="Ex: 50" />
+                    <InputGroup type="number" label="Valor Energético (Kcal)" value={customIngData.kcal} onChange={v => setCustomIngData({...customIngData, kcal: v})} />
+                    <InputGroup type="number" label="Carboidratos (g)" value={customIngData.carbs} onChange={v => setCustomIngData({...customIngData, carbs: v})} />
+                    <InputGroup type="number" label="Proteínas (g)" value={customIngData.proteins} onChange={v => setCustomIngData({...customIngData, proteins: v})} />
+                    <InputGroup type="number" label="Gorduras Totais (g)" value={customIngData.totalFats} onChange={v => setCustomIngData({...customIngData, totalFats: v})} />
+                    <InputGroup type="number" label="Gorduras Saturadas (g)" value={customIngData.satFats} onChange={v => setCustomIngData({...customIngData, satFats: v})} />
+                    <InputGroup type="number" label="Gorduras Trans (g)" value={customIngData.transFats} onChange={v => setCustomIngData({...customIngData, transFats: v})} />
+                    <InputGroup type="number" label="Fibra Alimentar (g)" value={customIngData.fiber} onChange={v => setCustomIngData({...customIngData, fiber: v})} />
+                    <InputGroup type="number" label="Sódio (mg)" value={customIngData.sodium} onChange={v => setCustomIngData({...customIngData, sodium: v})} />
+                  </div>
+                </div>
+                <div className="p-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
+                   <button onClick={() => setCustomIngModalOpen(false)} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded">Cancelar</button>
+                   <button onClick={addCustomIngredientToFormulation} className="bg-[#5c3a21] text-white px-6 py-2 rounded shadow font-bold hover:bg-[#4a2e1a]">Adicionar à Receita</button>
                 </div>
               </div>
             </div>
@@ -634,13 +716,41 @@
               </div>
             )}
             {activeTab === 2 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                <InputGroup label="Unidades por Pacote" type="number" value={formData.technical.unitsPerPackage} onChange={v => updateNested('technical', 'unitsPerPackage', v)} />
-                <InputGroup label="Peso do Pacote" value={formData.technical.packageWeight} onChange={v => updateNested('technical', 'packageWeight', v)} />
-                <InputGroup label="Peso por Unidade" value={formData.technical.unitWeight} onChange={v => updateNested('technical', 'unitWeight', v)} />
-                <InputGroup label="Temp Forno" value={formData.technical.bakingTemp} onChange={v => updateNested('technical', 'bakingTemp', v)} />
-                <InputGroup label="Tempo Forno" value={formData.technical.bakingTime} onChange={v => updateNested('technical', 'bakingTime', v)} />
-                <InputGroup label="Quantidade por Tela" type="number" value={formData.technical.perTray} onChange={v => updateNested('technical', 'perTray', v)} />
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  <InputGroup label="Unidades por Pacote" type="number" value={formData.technical.unitsPerPackage} onChange={v => updateNested('technical', 'unitsPerPackage', v)} />
+                  <InputGroup label="Peso do Pacote" value={formData.technical.packageWeight} onChange={v => updateNested('technical', 'packageWeight', v)} />
+                  <InputGroup label="Peso por Unidade" value={formData.technical.unitWeight} onChange={v => updateNested('technical', 'unitWeight', v)} />
+                  <InputGroup label="Quantidade por Tela" type="number" value={formData.technical.perTray} onChange={v => updateNested('technical', 'perTray', v)} />
+                </div>
+                
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
+                  <div className="flex justify-between items-center border-b border-gray-200 pb-3 mb-4">
+                     <h4 className="font-bold text-[#5c3a21] flex items-center">Parâmetros de Assamento (Fornos)</h4>
+                     <button onClick={addOven} className="bg-[#5c3a21] text-white px-3 py-1.5 rounded text-xs font-bold flex items-center space-x-1 hover:bg-[#4a2e1a]"><Plus size={14}/> <span>Adicionar Forno</span></button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {(!formData.technical.ovens || formData.technical.ovens.length === 0) ? (
+                       <p className="text-xs text-gray-500 italic text-center py-4 bg-white rounded border border-dashed border-gray-300">Nenhum forno cadastrado. Adicione fornos específicos para este produto.</p>
+                    ) : (
+                       formData.technical.ovens.map((oven, idx) => (
+                          <div key={oven.id} className="flex items-center gap-3 bg-white p-3 rounded border border-gray-200 shadow-sm relative">
+                             <button onClick={() => removeOven(oven.id)} className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 hover:bg-red-200"><X size={12}/></button>
+                             <div className="flex-1"><InputGroup label="Tipo/Nome do Forno" value={oven.name} onChange={v => updateOven(oven.id, 'name', v)} placeholder="Ex: Forno Lastro" /></div>
+                             <div className="w-24"><InputGroup label="Temp." value={oven.temp} onChange={v => updateOven(oven.id, 'temp', v)} placeholder="Ex: 200°C" /></div>
+                             <div className="w-24"><InputGroup label="Tempo" value={oven.time} onChange={v => updateOven(oven.id, 'time', v)} placeholder="Ex: 15 min" /></div>
+                             <div className="flex flex-col space-y-1 w-20">
+                                <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wide">Vapor</label>
+                                <select className="p-2 border border-gray-300 rounded outline-none text-sm text-gray-800 focus:ring-1 focus:ring-[#F4B400] transition" value={oven.vapor} onChange={e => updateOven(oven.id, 'vapor', e.target.value)}>
+                                  <option>Sim</option><option>Não</option>
+                                </select>
+                             </div>
+                          </div>
+                       ))
+                    )}
+                  </div>
+                </div>
               </div>
             )}
             {activeTab === 3 && (
@@ -669,7 +779,6 @@
                     <div key={step.id} className="border p-3 relative bg-gray-50 flex shadow-sm rounded">
                       <button onClick={() => removePrepStep(step.id)} className="absolute top-2 right-2 text-red-500 z-10"><Trash2 size={16}/></button>
                       
-                      {/* Área da Imagem Atualizada (Formato de Visualização Amplo) */}
                       <div className="w-28 h-20 bg-white border border-dashed flex-shrink-0 relative flex items-center justify-center mr-3 rounded overflow-hidden group">
                         {step.image ? (
                           <>
@@ -700,16 +809,18 @@
             {activeTab === 7 && (
               <div className="space-y-6">
                 
-                {/* NOVA CALCULADORA DE FORMULAÇÃO */}
                 <div className="bg-yellow-50/50 border border-yellow-200 rounded-xl p-5 mb-6">
                    <div className="flex justify-between items-center border-b border-yellow-200 pb-3 mb-4">
                        <h4 className="font-bold text-[#5c3a21] flex items-center"><Calculator className="mr-2" size={18}/> Calculadora de Receita / Formulação</h4>
-                       <button onClick={() => setTacoModalOpen(true)} className="bg-[#F4B400] text-[#5c3a21] px-3 py-1.5 rounded text-xs font-bold uppercase shadow-sm">+ Adicionar Ingrediente TACO</button>
+                       <div className="flex gap-2">
+                          <button onClick={() => setCustomIngModalOpen(true)} className="bg-white text-[#5c3a21] border border-[#F4B400] px-3 py-1.5 rounded text-xs font-bold uppercase shadow-sm hover:bg-yellow-50">+ Ingrediente Manual</button>
+                          <button onClick={() => setTacoModalOpen(true)} className="bg-[#F4B400] text-[#5c3a21] px-3 py-1.5 rounded text-xs font-bold uppercase shadow-sm hover:bg-[#d9a000]">+ Banco TACO</button>
+                       </div>
                    </div>
                    
                    <div className="space-y-2 mb-4">
                      {(!formData.formulation || formData.formulation.length === 0) ? (
-                        <p className="text-xs text-gray-500 italic text-center py-4 bg-white rounded border border-dashed border-gray-300">Nenhum ingrediente adicionado. Adicione ingredientes da TACO para calcular a tabela nutricional automaticamente.</p>
+                        <p className="text-xs text-gray-500 italic text-center py-4 bg-white rounded border border-dashed border-gray-300">Nenhum ingrediente adicionado. Adicione ingredientes da TACO ou utilize ingredientes manuais para calcular a tabela nutricional.</p>
                      ) : (
                         formData.formulation.map((item, idx) => (
                            <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-gray-200 shadow-sm">
@@ -739,6 +850,9 @@
                     <NutriRow label="Carboidratos (g)" val={formData.nutritional.carbs} onChange={v => updateNested('nutritional', 'carbs', v)} refVD={300} />
                     <NutriRow label="Proteínas (g)" val={formData.nutritional.proteins} onChange={v => updateNested('nutritional', 'proteins', v)} refVD={50} />
                     <NutriRow label="Gorduras Totais (g)" val={formData.nutritional.totalFats} onChange={v => updateNested('nutritional', 'totalFats', v)} refVD={55} />
+                    <NutriRow label="Gorduras Saturadas (g)" val={formData.nutritional.satFats} onChange={v => updateNested('nutritional', 'satFats', v)} refVD={22} />
+                    <NutriRow label="Gorduras Trans (g)" val={formData.nutritional.transFats} onChange={v => updateNested('nutritional', 'transFats', v)} refVD={0} />
+                    <NutriRow label="Fibra Alimentar (g)" val={formData.nutritional.fiber} onChange={v => updateNested('nutritional', 'fiber', v)} refVD={25} />
                     <NutriRow label="Sódio (mg)" val={formData.nutritional.sodium} onChange={v => updateNested('nutritional', 'sodium', v)} refVD={2000} />
                   </tbody>
                 </table>
@@ -786,8 +900,22 @@
                 <div className="bg-white rounded border border-gray-200 p-4 text-[13px] space-y-3 shadow-sm text-gray-800 leading-snug avoid-break">
                   <p><span className="font-bold text-black">Unidades por Pacote:</span><br/> Média de {ficha.technical.unitsPerPackage} unidades.</p>
                   <p><span className="font-bold text-black">Peso do Pacote:</span> {ficha.technical.packageWeight}</p>
-                  <p><span className="font-bold text-black">Temperatura:</span> {ficha.technical.bakingTemp}<br/><span className="font-bold text-black">Vapor:</span> {ficha.technical.vapor}</p>
-                  <p><span className="font-bold text-black">Tempo Assamento:</span> {ficha.technical.bakingTime}</p>
+                  <p><span className="font-bold text-black">Quantidade por tela:</span> {ficha.technical.perTray} unidades.</p>
+                  
+                  <div className="border-t border-gray-200 pt-2 mt-2">
+                    <span className="font-bold text-black block mb-1">Parâmetros de Assamento:</span>
+                    {(!ficha.technical.ovens || ficha.technical.ovens.length === 0) ? (
+                        <p className="text-gray-500 italic text-[11px]">Não informado</p>
+                    ) : (
+                        <div className="space-y-1.5">
+                        {ficha.technical.ovens.map((oven, i) => (
+                            <div key={i} className="bg-gray-50 p-1.5 rounded border border-gray-200 text-[11px] leading-tight">
+                                <span className="font-bold text-[#5c3a21]">{oven.name}:</span> {oven.temp} | {oven.time} | Vapor: {oven.vapor}
+                            </div>
+                        ))}
+                        </div>
+                    )}
+                  </div>
                 </div>
                 <div className="avoid-break"><h3 className="font-black text-black bg-[#F4B400] px-3 py-1.5 text-center text-xs uppercase rounded-t border-b-2 border-[#5c3a21]">Armazenamento</h3><div className="border border-black bg-white text-[10px]"><div className="grid grid-cols-3 text-center font-bold border-b border-black divide-x divide-black bg-gray-100"><div className="p-1">MODO</div><div className="p-1">FECHADA</div><div className="p-1">ABERTA</div></div><div className="grid grid-cols-3 text-center divide-x divide-black items-center"><div className="p-2 font-bold bg-gray-50">Freezer<br/>({ficha.conservation.frozen})</div><div className="p-2">{ficha.conservation.closedPackage}</div><div className="p-2">{ficha.conservation.openPackage}</div></div></div></div>
                 <div className="grid grid-cols-2 gap-2 text-center text-xs avoid-break"><div className="border border-gray-300 rounded overflow-hidden"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Pacote</div><div className="p-2 bg-gray-50">{ficha.validity.package}</div></div><div className="border border-gray-300 rounded overflow-hidden flex flex-col"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Assado</div><div className="p-2 bg-gray-50 flex-1 flex items-center justify-center font-bold">{ficha.validity.postBaking}</div></div></div>
@@ -798,17 +926,17 @@
                   <NutriPrintRow label="Valor energético (kcal)" val={ficha.nutritional.kcal} vd={Math.round((ficha.nutritional.kcal / 2000) * 100)} />
                   <NutriPrintRow label="Carboidratos (g)" val={ficha.nutritional.carbs} vd={Math.round((ficha.nutritional.carbs / 300) * 100)} />
                   <NutriPrintRow label="Proteínas (g)" val={ficha.nutritional.proteins} vd={Math.round((ficha.nutritional.proteins / 50) * 100)} />
-                  <NutriPrintRow label="Gorduras totais (g)" val={ficha.nutritional.totalFats} vd={Math.round((ficha.nutritional.totalFats / 55) * 100)} />
+                  <NutriRow label="Gorduras totais (g)" val={ficha.nutritional.totalFats} vd={Math.round((ficha.nutritional.totalFats / 55) * 100)} />
+                  <NutriRow label="Gorduras saturadas (g)" val={ficha.nutritional.satFats} vd={Math.round((ficha.nutritional.satFats / 22) * 100)} />
+                  <NutriRow label="Gorduras trans (g)" val={ficha.nutritional.transFats} vd={ficha.nutritional.transFats > 0 ? '**' : '0'} />
+                  <NutriRow label="Fibra alimentar (g)" val={ficha.nutritional.fiber} vd={Math.round((ficha.nutritional.fiber / 25) * 100)} />
                   <NutriPrintRow label="Sódio (mg)" val={ficha.nutritional.sodium} vd={Math.round((ficha.nutritional.sodium / 2000) * 100)} borderBottom={false} />
-                </tbody></table></div></section>
+                </tbody></table></div><p className="text-[9px] mt-1 text-black">*Percentual de valores diários fornecidos pela porção.</p></section>
                 <section><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-3">Modo de Preparo</h3><div className="grid grid-cols-2 gap-x-4 gap-y-3">
                   {ficha.preparationSteps.map((step, idx) => (
                     <div key={idx} className="relative avoid-break">
                       <div className="font-black text-[13px] text-[#5c3a21] mb-1 leading-none"><span className="text-[#F4B400] text-lg mr-1">•</span>{step.title}:</div>
-                      
-                      {/* IMAGENS COM ALTURA EXATA PARA O FORMATO PAISAGEM / PDF */}
                       {step.image && (<div className="w-full h-[100px] mb-1.5 bg-gray-100 rounded overflow-hidden border border-gray-200"><img src={step.image} className="w-full h-full object-cover" /></div>)}
-                      
                       <p className="text-[10px] text-justify leading-tight text-gray-800">{step.desc}</p>
                     </div>
                   ))}
