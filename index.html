@@ -38,6 +38,8 @@
       padding: 10mm 15mm;
       background-color: white;
       box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
     }
     @media print {
       @page { margin: 10mm 10mm 15mm 10mm; size: A4 portrait; }
@@ -49,14 +51,23 @@
         print-color-adjust: exact !important; 
       }
       .no-print { display: none !important; }
+      
+      /* CRITICAL FIX: Chrome cannot page-break inside a flex container. 
+         We must switch it to block display for printing. */
       .pdf-container { 
+        display: block !important; 
         width: 100%; 
+        height: auto;
         margin: 0; 
         padding: 0; 
         box-shadow: none; 
-        page-break-after: always;
       }
+      
+      /* Prevent elements from being split across pages */
       .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+      
+      /* Force a page break before specific elements if needed (optional) */
+      .page-break-before { page-break-before: always; break-before: page; }
     }
   </style>
 </head>
@@ -315,7 +326,7 @@
       validity: { package: '', postBaking: '', postDefrost: '' },
       preparationSteps: [],
       formulation: [], 
-      nutritional: { finalYield: '', portion: 0, measure: '', kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 },
+      nutritional: { finalYield: '', portion: 0, measure: '', kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 },
       approval: { show: false, createdBy: '', reviewedBy: '', approvedBy: '' },
       revisionHistory: []
     };
