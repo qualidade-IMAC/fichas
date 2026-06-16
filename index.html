@@ -55,7 +55,8 @@
         print-color-adjust: exact !important; 
       }
       
-      @page { margin: 10mm 10mm 15mm 10mm; size: A4 portrait; }
+      /* Reduzimos as margens para aproveitar melhor a área útil da folha A4 */
+      @page { margin: 8mm 8mm 10mm 8mm; size: A4 portrait; }
       
       .no-print { display: none !important; }
       
@@ -72,6 +73,9 @@
       
       /* Proteção contra corte no meio de elementos sensíveis */
       .avoid-break { break-inside: avoid !important; page-break-inside: avoid !important; }
+      
+      /* Classe para forçar conteúdo para a próxima página */
+      .page-break-before { break-before: page !important; page-break-before: always !important; }
     }
   </style>
 </head>
@@ -1598,106 +1602,167 @@
 
     const PDFView = ({ ficha, onBack, companySettings }) => {
       if (!ficha) return null;
+
+      // Componente de Rodapé reaproveitável para as múltiplas páginas
+      const PrintFooter = () => (
+        <footer className="mt-4 border-t-2 border-black pt-2 text-center text-[10px] text-black font-medium leading-tight avoid-break">
+          <p className="font-black text-xs text-[#5c3a21]">{companySettings.name}</p>
+          <p>{companySettings.address} - Telefone: {companySettings.phone}</p>
+        </footer>
+      );
+
       return (
         <div className="w-full flex flex-col items-center pb-20">
           <div className="no-print w-full max-w-[210mm] bg-white p-4 rounded-xl shadow border mb-6 flex justify-between items-center sticky top-4 z-50">
             <button onClick={onBack} className="flex items-center space-x-2 text-sm"><ArrowLeft size={16} /> <span>Voltar à Edição</span></button>
             <button onClick={() => window.print()} className="bg-[#5c3a21] text-[#F4B400] px-6 py-2 rounded font-black uppercase text-sm flex items-center space-x-2"><Printer size={18} /> <span>Imprimir A4</span></button>
           </div>
+          
           <div className="pdf-container shadow-2xl relative bg-white">
-            <header className="flex justify-between items-end border-b-4 border-[#F4B400] pb-4 mb-6 avoid-break">
-              <div className="flex items-center space-x-4">
-                 <div className="relative flex items-center mr-2">{(companySettings.fichaLogo || companySettings.logo) ? <img src={companySettings.fichaLogo || companySettings.logo} className="h-16 max-w-[200px] object-contain" /> : <ImacLogoSVG className="h-16" />}</div>
-                 <div className="pl-4 border-l-2 border-gray-300"><p className="text-xs uppercase font-black text-gray-700 tracking-wider">Indústria de Massas Congeladas</p><p className="font-bold text-lg text-black">Controle de Qualidade</p></div>
-              </div>
-              <div className="text-right"><h1 className="text-[22px] font-black text-black uppercase tracking-widest border-b-2 border-black inline-block mb-1">Ficha Técnica</h1><h2 className="text-2xl font-black text-[#5c3a21] mt-1">{ficha.name}</h2></div>
-            </header>
             
-            <div className="block mb-4">
-              <div className="grid grid-cols-[1fr_1.4fr] gap-8 mb-6">
-                <div className="space-y-5">
-                  <div className="border-[6px] border-[#F4B400] rounded-lg overflow-hidden h-52 w-full avoid-break"><img src={ficha.coverImage} className="w-full h-full object-cover" /></div>
-                  <div className="bg-white rounded border border-gray-200 p-4 text-[13px] space-y-3 shadow-sm text-gray-800 leading-snug avoid-break">
-                    <p><span className="font-bold text-black">Unidades por Pacote:</span><br/> Média de {ficha.technical.unitsPerPackage} unidades.</p>
-                    <p><span className="font-bold text-black">Peso do Pacote:</span> {ficha.technical.packageWeight}</p>
-                    <p><span className="font-bold text-black">Quantidade por tela:</span> {ficha.technical.perTray} unidades.</p>
+            {/* ================= PÁGINA 1: FICHA TÉCNICA PRINCIPAL ================= */}
+            <div>
+              <header className="flex justify-between items-end border-b-4 border-[#F4B400] pb-3 mb-4">
+                <div className="flex items-center space-x-4">
+                   <div className="relative flex items-center mr-2">{(companySettings.fichaLogo || companySettings.logo) ? <img src={companySettings.fichaLogo || companySettings.logo} className="h-14 max-w-[180px] object-contain" /> : <ImacLogoSVG className="h-14" />}</div>
+                   <div className="pl-4 border-l-2 border-gray-300"><p className="text-[10px] uppercase font-black text-gray-700 tracking-wider">Indústria de Massas Congeladas</p><p className="font-bold text-base text-black leading-tight">Controle de Qualidade</p></div>
+                </div>
+                <div className="text-right"><h1 className="text-[20px] font-black text-black uppercase tracking-widest border-b-2 border-black inline-block mb-1">Ficha Técnica</h1><h2 className="text-xl font-black text-[#5c3a21] mt-1">{ficha.name}</h2></div>
+              </header>
+              
+              <div className="block mb-2">
+                {/* Reduzido gap-8 para gap-6 e mb-6 para mb-4 para compactar */}
+                <div className="grid grid-cols-[1fr_1.4fr] gap-6 mb-4">
+                  
+                  <div className="space-y-4">
+                    {/* Imagem reduzida de h-52 para h-44 */}
+                    <div className="border-[4px] border-[#F4B400] rounded-lg overflow-hidden h-44 w-full"><img src={ficha.coverImage} className="w-full h-full object-cover" /></div>
                     
-                    <div className="border-t border-gray-200 pt-2 mt-2">
-                      <span className="font-bold text-black block mb-1">Parâmetros de Assamento:</span>
-                      {(!ficha.technical.ovens || ficha.technical.ovens.length === 0) ? (
-                          <p className="text-gray-500 italic text-[11px]">Não informado</p>
-                      ) : (
-                          <div className="space-y-1.5">
-                          {ficha.technical.ovens.map((oven, i) => (
-                              <div key={i} className="bg-gray-50 p-1.5 rounded border border-gray-200 text-[11px] leading-tight">
-                                  <span className="font-bold text-[#5c3a21]">{oven.name}:</span> {oven.temp} | {oven.time} | Vapor: {oven.vapor}
-                              </div>
-                          ))}
-                          </div>
-                      )}
+                    <div className="bg-white rounded border border-gray-200 p-3 text-[12px] space-y-2 shadow-sm text-gray-800 leading-snug">
+                      <p><span className="font-bold text-black">Unidades por Pacote:</span><br/> Média de {ficha.technical.unitsPerPackage} unidades.</p>
+                      <p><span className="font-bold text-black">Peso do Pacote:</span> {ficha.technical.packageWeight}</p>
+                      <p><span className="font-bold text-black">Quantidade por tela:</span> {ficha.technical.perTray} unidades.</p>
+                      
+                      <div className="border-t border-gray-200 pt-2 mt-2">
+                        <span className="font-bold text-black block mb-1">Parâmetros de Assamento:</span>
+                        {(!ficha.technical.ovens || ficha.technical.ovens.length === 0) ? (
+                            <p className="text-gray-500 italic text-[10px]">Não informado</p>
+                        ) : (
+                            <div className="space-y-1">
+                            {ficha.technical.ovens.map((oven, i) => (
+                                <div key={i} className="bg-gray-50 p-1 rounded border border-gray-200 text-[10px] leading-tight">
+                                    <span className="font-bold text-[#5c3a21]">{oven.name}:</span> {oven.temp} | {oven.time} | Vapor: {oven.vapor}
+                                </div>
+                            ))}
+                            </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="font-black text-black bg-[#F4B400] px-2 py-1 text-center text-[11px] uppercase rounded-t border-b-2 border-[#5c3a21]">Armazenamento</h3>
+                      <div className="border border-black bg-white text-[9px]">
+                        <div className="grid grid-cols-3 text-center font-bold border-b border-black divide-x divide-black bg-gray-100"><div className="p-1">MODO</div><div className="p-1">FECHADA</div><div className="p-1">ABERTA</div></div>
+                        <div className="grid grid-cols-3 text-center divide-x divide-black items-center"><div className="p-1.5 font-bold bg-gray-50">Freezer<br/>({ficha.conservation.frozen})</div><div className="p-1.5">{ficha.conservation.closedPackage}</div><div className="p-1.5">{ficha.conservation.openPackage}</div></div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 text-center text-[10px]">
+                      <div className="border border-gray-300 rounded overflow-hidden"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Pacote</div><div className="p-1.5 bg-gray-50">{ficha.validity.package}</div></div>
+                      <div className="border border-gray-300 rounded overflow-hidden flex flex-col"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Assado</div><div className="p-1.5 bg-gray-50 flex-1 flex items-center justify-center font-bold">{ficha.validity.postBaking}</div></div>
                     </div>
                   </div>
-                  <div className="avoid-break"><h3 className="font-black text-black bg-[#F4B400] px-3 py-1.5 text-center text-xs uppercase rounded-t border-b-2 border-[#5c3a21]">Armazenamento</h3><div className="border border-black bg-white text-[10px]"><div className="grid grid-cols-3 text-center font-bold border-b border-black divide-x divide-black bg-gray-100"><div className="p-1">MODO</div><div className="p-1">FECHADA</div><div className="p-1">ABERTA</div></div><div className="grid grid-cols-3 text-center divide-x divide-black items-center"><div className="p-2 font-bold bg-gray-50">Freezer<br/>({ficha.conservation.frozen})</div><div className="p-2">{ficha.conservation.closedPackage}</div><div className="p-2">{ficha.conservation.openPackage}</div></div></div></div>
-                  <div className="grid grid-cols-2 gap-2 text-center text-xs avoid-break"><div className="border border-gray-300 rounded overflow-hidden"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Pacote</div><div className="p-2 bg-gray-50">{ficha.validity.package}</div></div><div className="border border-gray-300 rounded overflow-hidden flex flex-col"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Assado</div><div className="p-2 bg-gray-50 flex-1 flex items-center justify-center font-bold">{ficha.validity.postBaking}</div></div></div>
-                </div>
-                <div className="space-y-6">
-                  <section className="avoid-break"><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Ingredientes</h3><p className="text-[13px] text-justify leading-snug">{ficha.ingredients.text}</p><p className="mt-2 text-[12px] font-black uppercase leading-tight bg-gray-100 p-2 rounded">{ficha.ingredients.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients.allergensText && `ALÉRGICOS: ${ficha.ingredients.allergensText}`}</p></section>
-                  <section className="avoid-break"><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Informação Nutricional</h3><div className="border-[3px] border-black p-1.5 w-full max-w-[85%] font-sans text-black"><table className="w-full text-[12px]"><thead><tr className="border-b-[4px] border-black"><th colSpan="3" className="text-lg font-black pt-0 pb-1">INFORMAÇÃO NUTRICIONAL</th></tr><tr className="border-b-[2px] border-black"><th colSpan="3" className="font-normal text-left py-1 text-[11px] leading-tight"><span className="font-bold">Porção: {ficha.nutritional.portion}g ({ficha.nutritional.measure})</span></th></tr><tr className="border-b border-black font-black text-right"><td className="py-1 text-left"></td><td className="py-1 w-16">100 g</td><td className="py-1 w-16">% VD*</td></tr></thead><tbody>
-                    <NutriPrintRow label="Valor energético (kcal)" val={ficha.nutritional.kcal} vd={Math.round((ficha.nutritional.kcal / 2000) * 100)} />
-                    <NutriPrintRow label="Carboidratos (g)" val={ficha.nutritional.carbs} vd={Math.round((ficha.nutritional.carbs / 300) * 100)} />
-                    <NutriPrintRow label="Açúcares totais (g)" val={ficha.nutritional.totalSugars} vd="-" />
-                    <NutriPrintRow label="Açúcares adicionados (g)" val={ficha.nutritional.addedSugars} vd={Math.round((ficha.nutritional.addedSugars / 50) * 100)} />
-                    <NutriPrintRow label="Proteínas (g)" val={ficha.nutritional.proteins} vd={Math.round((ficha.nutritional.proteins / 50) * 100)} />
-                    <NutriPrintRow label="Gorduras totais (g)" val={ficha.nutritional.totalFats} vd={Math.round((ficha.nutritional.totalFats / 55) * 100)} />
-                    <NutriPrintRow label="Gorduras saturadas (g)" val={ficha.nutritional.satFats} vd={Math.round((ficha.nutritional.satFats / 22) * 100)} />
-                    <NutriPrintRow label="Gorduras trans (g)" val={ficha.nutritional.transFats} vd={ficha.nutritional.transFats > 0 ? '**' : '0'} />
-                    <NutriPrintRow label="Fibra alimentar (g)" val={ficha.nutritional.fiber} vd={Math.round((ficha.nutritional.fiber / 25) * 100)} />
-                    <NutriPrintRow label="Sódio (mg)" val={ficha.nutritional.sodium} vd={Math.round((ficha.nutritional.sodium / 2000) * 100)} borderBottom={false} />
-                  </tbody></table></div><p className="text-[9px] mt-1 text-black">*Percentual de valores diários fornecidos pela porção.</p></section>
-                </div>
-              </div>
-              
-              {ficha.preparationSteps && ficha.preparationSteps.length > 0 && (
-                <section className="mt-6 pt-2">
-                  <h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-3 avoid-break">Modo de Preparo</h3>
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                    {ficha.preparationSteps.map((step, idx) => (
-                      <div key={idx} className="relative avoid-break">
-                        <div className="font-black text-[13px] text-[#5c3a21] mb-1 leading-none"><span className="text-[#F4B400] text-lg mr-1">•</span>{step.title}:</div>
-                        {step.image && (<div className="w-full h-[140px] mb-1.5 bg-gray-100 rounded overflow-hidden border border-gray-200"><img src={step.image} className="w-full h-full object-cover" /></div>)}
-                        <p className="text-[11px] text-justify leading-tight text-gray-800">{step.desc}</p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
 
-              {/* Histórico e Assinaturas (Se ativado) */}
-              {(ficha.revisionHistory?.length > 0 || ficha.approval?.show) && (
-                  <div className="mt-6 pt-2">
+                  <div className="space-y-4">
+                    <section>
+                      <h3 className="text-base font-black text-[#5c3a21] border-b border-black pb-0.5 mb-1.5">Ingredientes</h3>
+                      <p className="text-[11px] text-justify leading-snug">{ficha.ingredients.text}</p>
+                      <p className="mt-1.5 text-[10px] font-black uppercase leading-tight bg-gray-100 p-1.5 rounded">{ficha.ingredients.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients.allergensText && `ALÉRGICOS: ${ficha.ingredients.allergensText}`}</p>
+                    </section>
+                    
+                    <section className="avoid-break">
+                      <h3 className="text-base font-black text-[#5c3a21] border-b border-black pb-0.5 mb-1.5">Informação Nutricional</h3>
+                      <div className="border-[2px] border-black p-1 w-full max-w-[90%] font-sans text-black">
+                        <table className="w-full text-[10px]">
+                          <thead>
+                            <tr className="border-b-[3px] border-black"><th colSpan="3" className="text-base font-black pt-0 pb-0.5">INFORMAÇÃO NUTRICIONAL</th></tr>
+                            <tr className="border-b-[1px] border-black"><th colSpan="3" className="font-normal text-left py-0.5 text-[10px] leading-tight"><span className="font-bold">Porção: {ficha.nutritional.portion}g ({ficha.nutritional.measure})</span></th></tr>
+                            <tr className="border-b border-black font-black text-right"><td className="py-0.5 text-left"></td><td className="py-0.5 w-14">100 g</td><td className="py-0.5 w-14">% VD*</td></tr>
+                          </thead>
+                          <tbody>
+                            <NutriPrintRow label="Valor energético (kcal)" val={ficha.nutritional.kcal} vd={Math.round((ficha.nutritional.kcal / 2000) * 100)} />
+                            <NutriPrintRow label="Carboidratos (g)" val={ficha.nutritional.carbs} vd={Math.round((ficha.nutritional.carbs / 300) * 100)} />
+                            <NutriPrintRow label="Açúcares totais (g)" val={ficha.nutritional.totalSugars} vd="-" />
+                            <NutriPrintRow label="Açúcares adicionados (g)" val={ficha.nutritional.addedSugars} vd={Math.round((ficha.nutritional.addedSugars / 50) * 100)} />
+                            <NutriPrintRow label="Proteínas (g)" val={ficha.nutritional.proteins} vd={Math.round((ficha.nutritional.proteins / 50) * 100)} />
+                            <NutriPrintRow label="Gorduras totais (g)" val={ficha.nutritional.totalFats} vd={Math.round((ficha.nutritional.totalFats / 55) * 100)} />
+                            <NutriPrintRow label="Gorduras saturadas (g)" val={ficha.nutritional.satFats} vd={Math.round((ficha.nutritional.satFats / 22) * 100)} />
+                            <NutriPrintRow label="Gorduras trans (g)" val={ficha.nutritional.transFats} vd={ficha.nutritional.transFats > 0 ? '**' : '0'} />
+                            <NutriPrintRow label="Fibra alimentar (g)" val={ficha.nutritional.fiber} vd={Math.round((ficha.nutritional.fiber / 25) * 100)} />
+                            <NutriPrintRow label="Sódio (mg)" val={ficha.nutritional.sodium} vd={Math.round((ficha.nutritional.sodium / 2000) * 100)} borderBottom={false} />
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-[8px] mt-0.5 text-black">*Percentual de valores diários fornecidos pela porção.</p>
+                    </section>
+                  </div>
+                </div>
+                
+                {ficha.preparationSteps && ficha.preparationSteps.length > 0 && (
+                  <section className="mt-4 border-t border-gray-200 pt-3">
+                    <h3 className="text-base font-black text-[#5c3a21] border-b border-black pb-0.5 mb-3">Modo de Preparo</h3>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                      {ficha.preparationSteps.map((step, idx) => (
+                        <div key={idx} className="relative avoid-break">
+                          <div className="font-black text-[12px] text-[#5c3a21] mb-1 leading-none"><span className="text-[#F4B400] text-base mr-1">•</span>{step.title}:</div>
+                          {/* Altura reduzida de 140px para 110px para ganhar espaço vertical */}
+                          {step.image && (<div className="w-full h-[110px] mb-1.5 bg-gray-100 rounded overflow-hidden border border-gray-200"><img src={step.image} className="w-full h-full object-cover" /></div>)}
+                          <p className="text-[10px] text-justify leading-tight text-gray-800">{step.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </div>
+              <PrintFooter />
+            </div>
+
+            {/* ================= PÁGINA 2: CONTROLE DE REVISÕES E APROVAÇÃO ================= */}
+            {/* O page-break-before força esta div a sempre iniciar em uma folha nova na impressora */}
+            {(ficha.revisionHistory?.length > 0 || ficha.approval?.show) && (
+              <div className="page-break-before pt-8 flex flex-col h-full min-h-[200mm]">
+                  <header className="flex justify-between items-end border-b-2 border-gray-300 pb-2 mb-6 opacity-60">
+                    <div className="flex items-center space-x-3">
+                       <ImacLogoSVG className="h-8 grayscale" />
+                       <div className="pl-3 border-l border-gray-300"><p className="text-[9px] uppercase font-black text-gray-700 tracking-wider">Ficha Técnica: {ficha.code}</p></div>
+                    </div>
+                    <div className="text-right text-[10px] font-bold text-gray-500">Página 2 - Anexos Administrativos</div>
+                  </header>
+
+                  <div className="flex-1">
                       {ficha.revisionHistory?.length > 0 && (
-                          <div className="mb-4">
-                              <h3 className="text-[14px] font-black text-[#5c3a21] border-b border-black pb-1 mb-2 avoid-break">Histórico de Revisões</h3>
-                              <table className="w-full text-[9px] border-collapse border border-black">
+                          <div className="mb-8">
+                              <h3 className="text-[14px] font-black text-[#5c3a21] border-b border-black pb-1 mb-3">Histórico de Revisões</h3>
+                              <table className="w-full text-[10px] border-collapse border border-black">
                                   <thead>
                                       <tr className="bg-gray-100">
-                                          <th className="border border-black p-1 text-center w-16">Data</th>
-                                          <th className="border border-black p-1 text-center w-10">Versão</th>
-                                          <th className="border border-black p-1 text-left">Motivos / Alterações</th>
-                                          <th className="border border-black p-1 text-center w-24">Elaborador</th>
-                                          <th className="border border-black p-1 text-center w-24">Revisor</th>
-                                          <th className="border border-black p-1 text-center w-24">Aprovador</th>
+                                          <th className="border border-black p-1.5 text-center w-20">Data</th>
+                                          <th className="border border-black p-1.5 text-center w-12">Versão</th>
+                                          <th className="border border-black p-1.5 text-left">Motivos / Alterações</th>
+                                          <th className="border border-black p-1.5 text-center w-28">Elaborador</th>
+                                          <th className="border border-black p-1.5 text-center w-28">Revisor</th>
+                                          <th className="border border-black p-1.5 text-center w-28">Aprovador</th>
                                       </tr>
                                   </thead>
                                   <tbody>
                                       {ficha.revisionHistory.map(rev => (
                                           <tr key={rev.id}>
-                                              <td className="border border-black p-1 text-center">{rev.date}</td>
-                                              <td className="border border-black p-1 text-center">v{rev.version}.0</td>
-                                              <td className="border border-black p-1">{rev.notes}</td>
-                                              <td className="border border-black p-1 text-center">{rev.createdBy}</td>
-                                              <td className="border border-black p-1 text-center">{rev.reviewedBy}</td>
-                                              <td className="border border-black p-1 text-center">{rev.approvedBy}</td>
+                                              <td className="border border-black p-1.5 text-center">{rev.date}</td>
+                                              <td className="border border-black p-1.5 text-center font-bold">v{rev.version}.0</td>
+                                              <td className="border border-black p-1.5">{rev.notes}</td>
+                                              <td className="border border-black p-1.5 text-center">{rev.createdBy}</td>
+                                              <td className="border border-black p-1.5 text-center">{rev.reviewedBy}</td>
+                                              <td className="border border-black p-1.5 text-center">{rev.approvedBy}</td>
                                           </tr>
                                       ))}
                                   </tbody>
@@ -1706,29 +1771,29 @@
                       )}
 
                       {ficha.approval?.show && (
-                          <div className="border border-black p-3 bg-white mt-4 relative avoid-break">
-                              <div className="text-[10px] font-bold mb-6 flex justify-between">
-                                  <span className="uppercase text-[#5c3a21]">Controle de Aprovação</span>
-                                  <span>Emissão: {new Date().toLocaleString('pt-BR')}</span>
+                          <div className="border border-black p-4 bg-white mt-4 relative avoid-break">
+                              <div className="text-[11px] font-bold mb-10 flex justify-between border-b pb-2">
+                                  <span className="uppercase text-[#5c3a21]">Controle de Aprovação e Assinaturas</span>
+                                  <span className="text-gray-600">Emissão: {new Date().toLocaleString('pt-BR')}</span>
                               </div>
-                              <div className="grid grid-cols-3 gap-6 text-center text-[10px]">
+                              <div className="grid grid-cols-3 gap-8 text-center text-[11px] mt-12 pb-4">
                                   <div>
-                                      <div className="border-t border-black pt-1 mx-4 font-bold">{ficha.approval.createdBy || 'Elaborado por'}</div>
+                                      <div className="border-t border-black pt-2 mx-4 font-bold text-gray-800">{ficha.approval.createdBy || 'Elaborado por'}</div>
                                   </div>
                                   <div>
-                                      <div className="border-t border-black pt-1 mx-4 font-bold">{ficha.approval.reviewedBy || 'Revisado por'}</div>
+                                      <div className="border-t border-black pt-2 mx-4 font-bold text-gray-800">{ficha.approval.reviewedBy || 'Revisado por'}</div>
                                   </div>
                                   <div>
-                                      <div className="border-t border-black pt-1 mx-4 font-bold">{ficha.approval.approvedBy || 'Aprovado por'}</div>
+                                      <div className="border-t border-black pt-2 mx-4 font-bold text-gray-800">{ficha.approval.approvedBy || 'Aprovado por'}</div>
                                   </div>
                               </div>
                           </div>
                       )}
                   </div>
-              )}
+                  <PrintFooter />
+              </div>
+            )}
 
-            </div>
-            <footer className="mt-8 border-t-2 border-black pt-2 text-center text-[10px] text-black font-medium leading-tight avoid-break"><p className="font-black text-xs text-[#5c3a21]">{companySettings.name}</p><p>{companySettings.address} - Telefone: {companySettings.phone}</p></footer>
           </div>
         </div>
       );
