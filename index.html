@@ -22,6 +22,9 @@
   <!-- Babel Standalone (Para rodar React no navegador) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+  <!-- PDF.js para Extração Automática de Fichas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
   <style>
     /* Esconde barra de rolagem mas mantém funcional */
     .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -304,7 +307,97 @@
       validity: { package: '', postBaking: '', postDefrost: '' },
       preparationSteps: [],
       formulation: [], 
-      nutritional: { finalYield: '', portion: 0, measure: '', kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 }
+      nutritional: { finalYield: '', portion: 0, measure: '', kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 }
+    };
+
+    // ============================================================================
+    // PARSER DE PDF (EXTRAÇÃO INTELIGENTE DE DADOS DO LAYOUT IMAC)
+    // ============================================================================
+    const parseIMACPdf = (text, filename) => {
+      const normalizedText = text.replace(/\s+/g, ' ');
+      const getMatch = (regex, fallback = '') => {
+         const m = normalizedText.match(regex);
+         return m ? m[1].trim() : fallback;
+      };
+
+      let name = getMatch(/Ficha Técnica\s+(.*?)\s+Unidades por Pacote/i);
+      if(!name) name = filename.replace('.pdf', '');
+
+      const units = getMatch(/Média de (\d+) unidades/i, "0");
+      const packWeight = getMatch(/Peso do Pacote:\s*(.*?)\s+Peso/i, "5 kg");
+      const perTray = getMatch(/por tela:\s*(\d+)\s+unidades/i) || getMatch(/vez na fritadeira:\s*(\d+)\s+unidades/i, "0");
+
+      const tempLastro = getMatch(/(\d+°C)\s*\(lastro\)/i);
+      const tempTurbo = getMatch(/(\d+°C)\s*\(turbo\)/i);
+      const tempFritadeira = getMatch(/Temperatura:\s*(\d+°C)\.?\s+Quantidade/i);
+      const time = getMatch(/Tempo de Assamento:\s*(.*?)\s+Quantidade/i, "");
+      const vapor = getMatch(/Vapor no forno:\s*(Sim|Não)/i, "Não");
+
+      const ovens = [];
+      if (tempLastro) ovens.push({ id: 1, name: 'Forno Lastro', temp: tempLastro, time: time, vapor: vapor });
+      if (tempTurbo) ovens.push({ id: 2, name: 'Forno Turbo', temp: tempTurbo, time: time, vapor: vapor });
+      if (ovens.length === 0 && tempFritadeira) ovens.push({ id: 1, name: 'Fritadeira', temp: tempFritadeira, time: time, vapor: 'Não' });
+
+      let ingredientsText = getMatch(/Ingredientes\s+(.*?)\s+INFORMAÇÃO NUTRICIONAL/i, "");
+      if(!ingredientsText) ingredientsText = getMatch(/Ingredientes\s+(.*?)\s+Informação Nutricional/i, "");
+
+      const containsGluten = /CONTÉM GLÚTEN/i.test(ingredientsText);
+      const containsLactose = /CONTÉM LACTOSE/i.test(ingredientsText);
+      const allergens = getMatch(/ALÉRGICOS:\s*(.*?)(?=\.|$)/i, "");
+
+      const valPacote = getMatch(/Validade do Pacote\s*(\d+\s+dias)/i, "60 dias");
+      const valAssado = getMatch(/Validade Após o Assamento\s*(.*?)\./i) || getMatch(/Validade Após o Assamento\s*(.*?)\s+Ingredientes/i, "Diário");
+
+      const portion = getMatch(/Porção:\s*(\d+)g/i, "50");
+      const measure = getMatch(/Porção:\s*\d+g\s*\((.*?)\)/i, "");
+
+      // Extração do Modo de Preparo (Aprimorada com Segurança/Fallback)
+      let prepRaw = "";
+      const prepMatch = normalizedText.match(/fornecidos pela por[cç][aã]o[\s\.\*\|"']*(.*?)(?:IMAC Ind[uú]stria|Av\. Cel\. C[ií]cero)/i);
+      if (prepMatch) {
+          prepRaw = prepMatch[1].replace(/\|/g, '').trim(); // Remove "sujeiras" de quebra de tabela do PDF
+      }
+
+      let prepSteps = [];
+      if (prepRaw) {
+         // Quebra onde houver um título terminando em dois pontos (ex: "Pão Congelado:")
+         // Regex mais poderoso: Suporta letras acentuadas (À-ÿ), números e símbolos ordinais (º, °).
+         const tokens = prepRaw.split(/([A-Z0-9À-Ÿ][A-Za-zÀ-ÿ0-9\s\-\.º°]{2,35}:)/g).filter(s => s.trim() !== "");
+         
+         let currentId = 1;
+         for (let i = 0; i < tokens.length; i++) {
+             if (tokens[i].trim().endsWith(':')) {
+                 prepSteps.push({
+                     id: currentId++,
+                     title: tokens[i].replace(':', '').trim(),
+                     desc: (tokens[i+1] && !tokens[i+1].trim().endsWith(':')) ? tokens[i+1].trim() : '',
+                     image: ''
+                 });
+             }
+         }
+      }
+
+      // Fallback de Segurança: Se não conseguiu fatiar em passos, joga todo o texto bruto para o usuário não perder os dados
+      if (prepSteps.length === 0 && prepRaw.length > 10) {
+          prepSteps.push({
+              id: 1,
+              title: 'Modo de Preparo (Revisar Textos)',
+              desc: prepRaw,
+              image: ''
+          });
+      }
+
+      return {
+        id: '', code: 'IMP-' + Math.floor(Math.random()*1000), name: name, category: 'Importado', version: 1, status: 'draft', coverImage: '',
+        general: { brand: 'IMAC', description: 'Ficha importada automaticamente via leitura do PDF.' },
+        technical: { unitsPerPackage: units, packageWeight: packWeight, unitWeight: '', perTray: perTray, ovens: ovens },
+        ingredients: { text: ingredientsText, containsGluten: containsGluten, containsLactose: containsLactose, allergensText: allergens },
+        conservation: { frozen: '-12°C ou mais frio', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
+        validity: { package: valPacote, postBaking: valAssado, postDefrost: 'Não recongelar' },
+        preparationSteps: prepSteps,
+        formulation: [],
+        nutritional: { finalYield: '', portion: portion, measure: measure, kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 }
+      };
     };
 
     // ============================================================================
@@ -513,7 +606,7 @@
 
             <div className="flex-1 overflow-auto bg-gray-50 p-6 h-[calc(100vh-80px)] relative">
               {currentView === 'dashboard' && <DashboardView fichas={fichas} customIngredients={customIngredients} onNavigate={setCurrentView} />}
-              {currentView === 'list' && <ListView fichas={fichas} onEdit={(f) => { setSelectedFicha(f); setCurrentView('form'); }} onPdf={(f) => { setSelectedFicha(f); setCurrentView('pdf'); }} onNew={() => { setSelectedFicha(emptyFicha); setCurrentView('form'); }} onDelete={handleDelete} />}
+              {currentView === 'list' && <ListView fichas={fichas} onEdit={(f) => { setSelectedFicha(f); setCurrentView('form'); }} onPdf={(f) => { setSelectedFicha(f); setCurrentView('pdf'); }} onNew={() => { setSelectedFicha(emptyFicha); setCurrentView('form'); }} onDelete={handleDelete} onImport={(f) => { setSelectedFicha(f); setCurrentView('form'); }} />}
               {currentView === 'ingredients' && <IngredientsView ingredients={customIngredients} onSave={handleSaveIngredient} onDelete={handleDeleteIngredient} />}
               {currentView === 'form' && <FormView ficha={selectedFicha} customIngredients={customIngredients} onBack={() => setCurrentView('list')} onSave={handleSaveFicha} />}
               {currentView === 'pdf' && <PDFView ficha={selectedFicha} onBack={() => setCurrentView('list')} companySettings={companySettings} />}
@@ -559,9 +652,42 @@
       );
     };
 
-    const ListView = ({ fichas, onEdit, onPdf, onNew, onDelete }) => {
+    const ListView = ({ fichas, onEdit, onPdf, onNew, onDelete, onImport }) => {
       const [search, setSearch] = useState('');
+      const importPdfRef = React.useRef(null);
+      const [isParsing, setIsParsing] = useState(false);
+
       const filtered = fichas.filter(f => f.name.toLowerCase().includes(search.toLowerCase()) || f.code.toLowerCase().includes(search.toLowerCase()));
+
+      const handlePdfUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setIsParsing(true);
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdfjsLib = window['pdfjs-dist/build/pdf'];
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+            let fullText = "";
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(" ");
+                fullText += pageText + " ";
+            }
+
+            const extractedFicha = parseIMACPdf(fullText, file.name);
+            onImport(extractedFicha);
+        } catch (error) {
+            console.error("PDF Parsing Error:", error);
+            alert("Erro ao ler o arquivo PDF. Verifique se é um arquivo de texto válido e tente novamente.");
+        } finally {
+            setIsParsing(false);
+            e.target.value = null; // reset input
+        }
+      };
 
       return (
         <div className="space-y-6 max-w-7xl mx-auto h-full flex flex-col pb-10">
@@ -570,9 +696,15 @@
               <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
               <input type="text" placeholder="Buscar por nome ou código..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F4B400] outline-none text-sm" />
             </div>
-            <button onClick={onNew} className="bg-[#F4B400] hover:bg-[#d9a000] text-[#5c3a21] font-bold px-5 py-2 rounded-lg shadow flex items-center space-x-2">
-              <Plus size={18} /> <span>Nova Ficha Técnica</span>
-            </button>
+            <div className="flex gap-3">
+               <input type="file" accept=".pdf" ref={importPdfRef} className="hidden" onChange={handlePdfUpload} />
+               <button onClick={() => importPdfRef.current.click()} disabled={isParsing} className="bg-gray-800 hover:bg-gray-700 text-white font-bold px-5 py-2 rounded-lg shadow flex items-center space-x-2 transition-colors">
+                 <Upload size={18} /> <span>{isParsing ? 'Lendo PDF...' : 'Importar PDF'}</span>
+               </button>
+               <button onClick={onNew} className="bg-[#F4B400] hover:bg-[#d9a000] text-[#5c3a21] font-bold px-5 py-2 rounded-lg shadow flex items-center space-x-2 transition-colors">
+                 <Plus size={18} /> <span>Nova Ficha Técnica</span>
+               </button>
+            </div>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex-1 overflow-auto">
             <table className="w-full text-sm text-left">
