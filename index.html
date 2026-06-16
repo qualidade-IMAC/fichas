@@ -1126,7 +1126,7 @@
       };
 
       const addRevision = () => {
-          const newHistory = [...(formData.revisionHistory || []), { id: Date.now(), date: new Date().toLocaleDateString('pt-BR'), version: formData.version || 1, notes: '' }];
+          const newHistory = [...(formData.revisionHistory || []), { id: Date.now(), date: new Date().toLocaleDateString('pt-BR'), version: formData.version || 1, notes: '', editedBy: '', reviewedBy: '', approvedBy: '' }];
           setFormData({...formData, revisionHistory: newHistory});
       };
 
@@ -1516,15 +1516,29 @@
                         ) : (
                             <table className="w-full text-sm bg-white rounded border shadow-sm">
                                 <thead className="bg-[#5c3a21] text-white">
-                                    <tr><th className="p-2 text-left">Data</th><th className="p-2 text-left w-24">Versão</th><th className="p-2 text-left">Descrição da Alteração</th><th className="p-2 w-10"></th></tr>
+                                    <tr>
+                                        <th className="p-2 text-left w-28">Data / Versão</th>
+                                        <th className="p-2 text-left">Motivo da Alteração</th>
+                                        <th className="p-2 text-left w-48">Responsáveis</th>
+                                        <th className="p-2 w-10"></th>
+                                    </tr>
                                 </thead>
                                 <tbody>
                                     {formData.revisionHistory.map(rev => (
-                                        <tr key={rev.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                            <td className="p-2 w-32"><input type="text" value={rev.date} onChange={e => updateRevision(rev.id, 'date', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-sm" placeholder="DD/MM/AAAA" /></td>
-                                            <td className="p-2"><input type="number" value={rev.version} onChange={e => updateRevision(rev.id, 'version', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-sm" /></td>
-                                            <td className="p-2"><input type="text" value={rev.notes} onChange={e => updateRevision(rev.id, 'notes', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-sm" placeholder="Ex: Redução de sal na formulação." /></td>
-                                            <td className="p-2 text-center"><button onClick={() => removeRevision(rev.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded transition"><Trash2 size={16}/></button></td>
+                                        <tr key={rev.id} className="border-b border-gray-100 hover:bg-gray-50 align-top">
+                                            <td className="p-2 space-y-2">
+                                                <input type="text" value={rev.date} onChange={e => updateRevision(rev.id, 'date', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-sm" placeholder="DD/MM/AAAA" />
+                                                <div className="flex items-center space-x-1"><span className="text-xs font-bold text-gray-500">v</span><input type="number" value={rev.version} onChange={e => updateRevision(rev.id, 'version', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-sm" /></div>
+                                            </td>
+                                            <td className="p-2">
+                                                <textarea value={rev.notes} onChange={e => updateRevision(rev.id, 'notes', e.target.value)} className="w-full h-full min-h-[80px] p-2 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-sm resize-none" placeholder="Ex: Redução de sal na formulação." />
+                                            </td>
+                                            <td className="p-2 space-y-2">
+                                                <input type="text" value={rev.editedBy || ''} onChange={e => updateRevision(rev.id, 'editedBy', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-xs" placeholder="Elaborado por..." />
+                                                <input type="text" value={rev.reviewedBy || ''} onChange={e => updateRevision(rev.id, 'reviewedBy', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-xs" placeholder="Revisado por..." />
+                                                <input type="text" value={rev.approvedBy || ''} onChange={e => updateRevision(rev.id, 'approvedBy', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-xs" placeholder="Aprovado por..." />
+                                            </td>
+                                            <td className="p-2 text-center pt-3"><button onClick={() => removeRevision(rev.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded transition"><Trash2 size={16}/></button></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -1652,12 +1666,15 @@
                       {ficha.revisionHistory?.length > 0 && (
                           <div className="mb-4">
                               <h3 className="text-[14px] font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Histórico de Revisões</h3>
-                              <table className="w-full text-[10px] border-collapse border border-black">
+                              <table className="w-full text-[9px] border-collapse border border-black">
                                   <thead>
                                       <tr className="bg-gray-100">
-                                          <th className="border border-black p-1 text-center w-20">Data</th>
-                                          <th className="border border-black p-1 text-center w-16">Versão</th>
+                                          <th className="border border-black p-1 text-center w-14">Data</th>
+                                          <th className="border border-black p-1 text-center w-8">Ver.</th>
                                           <th className="border border-black p-1 text-left">Motivos / Alterações</th>
+                                          <th className="border border-black p-1 text-center w-[15%]">Elaborado por</th>
+                                          <th className="border border-black p-1 text-center w-[15%]">Revisado por</th>
+                                          <th className="border border-black p-1 text-center w-[15%]">Aprovado por</th>
                                       </tr>
                                   </thead>
                                   <tbody>
@@ -1666,6 +1683,9 @@
                                               <td className="border border-black p-1 text-center">{rev.date}</td>
                                               <td className="border border-black p-1 text-center">v{rev.version}.0</td>
                                               <td className="border border-black p-1">{rev.notes}</td>
+                                              <td className="border border-black p-1 text-center truncate max-w-[60px]">{rev.editedBy || '-'}</td>
+                                              <td className="border border-black p-1 text-center truncate max-w-[60px]">{rev.reviewedBy || '-'}</td>
+                                              <td className="border border-black p-1 text-center truncate max-w-[60px]">{rev.approvedBy || '-'}</td>
                                           </tr>
                                       ))}
                                   </tbody>
