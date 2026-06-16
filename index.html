@@ -1468,10 +1468,10 @@
               </header>
               
               <div className="block mb-2">
-                <div className="grid grid-cols-[1fr_1.3fr] gap-4 mb-2">
+                <div className="grid grid-cols-[1fr_1.3fr] gap-5 mb-2">
                   <div className="space-y-3">
-                    {/* Imagem de Capa Extra Comprimida (h-32) */}
-                    <div className="border-[3px] border-[#F4B400] rounded-lg overflow-hidden h-32 w-full"><img src={ficha.coverImage} className="w-full h-full object-cover" /></div>
+                    {/* Imagem de Capa Aumentada (h-44) */}
+                    <div className="border-[3px] border-[#F4B400] rounded-lg overflow-hidden h-44 w-full"><img src={ficha.coverImage} className="w-full h-full object-cover" /></div>
                     
                     <div className="bg-white rounded border border-gray-200 p-2 text-[10px] space-y-1.5 shadow-sm text-gray-800 leading-tight">
                       <p><span className="font-bold text-black">Unidades por Pacote:</span> Média de {ficha.technical.unitsPerPackage} un.</p>
@@ -1511,8 +1511,8 @@
                   <div className="space-y-3">
                     <section>
                       <h3 className="text-[13px] font-black text-[#5c3a21] border-b border-black pb-0.5 mb-1">Ingredientes</h3>
-                      <p className="text-[9px] text-justify leading-snug">{ficha.ingredients.text}</p>
-                      <p className="mt-1 text-[8px] font-black uppercase leading-tight bg-gray-100 p-1.5 rounded">{ficha.ingredients.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients.allergensText && `ALÉRGICOS: ${ficha.ingredients.allergensText}`}</p>
+                      <p className="text-[10px] text-justify leading-snug">{ficha.ingredients.text}</p>
+                      <p className="mt-1 text-[9px] font-black uppercase leading-tight bg-gray-100 p-1.5 rounded">{ficha.ingredients.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients.allergensText && `ALÉRGICOS: ${ficha.ingredients.allergensText}`}</p>
                     </section>
                     
                     <section className="avoid-break">
@@ -1546,13 +1546,13 @@
                 {ficha.preparationSteps && ficha.preparationSteps.length > 0 && (
                   <section className="mt-2 pt-2 border-t border-gray-200 avoid-break">
                     <h3 className="text-[13px] font-black text-[#5c3a21] border-b border-black pb-0.5 mb-2">Modo de Preparo</h3>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                       {ficha.preparationSteps.map((step, idx) => (
                         <div key={idx} className="relative avoid-break">
-                          <div className="font-black text-[10px] text-[#5c3a21] mb-0.5 leading-none"><span className="text-[#F4B400] text-sm mr-1">•</span>{step.title}:</div>
-                          {/* Imagens de Preparo Extra Comprimidas (h-16 = 64px) */}
-                          {step.image && (<div className="w-full h-16 mb-1 bg-gray-100 rounded overflow-hidden border border-gray-200"><img src={step.image} className="w-full h-full object-cover" /></div>)}
-                          <p className="text-[9px] text-justify leading-tight text-gray-800">{step.desc}</p>
+                          <div className="font-black text-[11px] text-[#5c3a21] mb-0.5 leading-none"><span className="text-[#F4B400] text-sm mr-1">•</span>{step.title}:</div>
+                          {/* Imagens de Preparo Aumentadas (h-28 = 112px) */}
+                          {step.image && (<div className="w-full h-28 mb-1 bg-gray-100 rounded overflow-hidden border border-gray-200"><img src={step.image} className="w-full h-full object-cover" /></div>)}
+                          <p className="text-[10px] text-justify leading-tight text-gray-800">{step.desc}</p>
                         </div>
                       ))}
                     </div>
