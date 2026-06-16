@@ -71,7 +71,8 @@
     const {
       LayoutDashboard, FileText, Users, Settings, Plus, Search, Filter,
       Edit, Printer, CheckCircle, Info, Database, Upload, Trash2, ArrowLeft,
-      Building, MapPin, Phone, Mail, X, Image: ImageIcon, Save, Calculator, Package
+      Building, MapPin, Phone, Mail, X, Image: ImageIcon, Save, Calculator, Package,
+      Copy, GripVertical
     } = Lucide;
 
     // ============================================================================
@@ -307,7 +308,9 @@
       validity: { package: '', postBaking: '', postDefrost: '' },
       preparationSteps: [],
       formulation: [], 
-      nutritional: { finalYield: '', portion: 0, measure: '', kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 }
+      nutritional: { finalYield: '', portion: 0, measure: '', kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 },
+      approval: { show: false, createdBy: '', reviewedBy: '', approvedBy: '' },
+      revisionHistory: []
     };
 
     // ============================================================================
@@ -418,7 +421,8 @@
         address: 'Av. Cel. Cícero Sá, 4000 - Camará, Aquiraz/CE, CEP: 61700-000',
         phone: '(85) 3878-1249',
         email: 'qualidade@imaccongelados.com.br',
-        logo: ''
+        logo: '',
+        fichaLogo: '' // Logo exclusiva para ficar fixa nos PDFs
       });
 
       // Autenticação Firebase
@@ -501,6 +505,23 @@
           console.error(error);
           alert("Erro ao salvar ficha: " + error.message);
         }
+      };
+
+      const handleDuplicate = async (fichaToDuplicate) => {
+          const duplicatedData = {
+              ...fichaToDuplicate,
+              id: '', // Remove o ID para gerar um novo no handleSaveFicha
+              name: `${fichaToDuplicate.name} (Cópia)`,
+              status: 'draft',
+              updatedAt: new Date().toLocaleDateString('pt-BR'),
+              revisionHistory: [] // Limpa o histórico da cópia
+          };
+          
+          if(confirm(`Deseja criar uma cópia idêntica da ficha "${fichaToDuplicate.name}"?`)){
+              // Salva a duplicata e já abre ela para edição
+              setSelectedFicha(duplicatedData);
+              setCurrentView('form');
+          }
       };
 
       const handleDelete = async (id) => {
@@ -606,7 +627,7 @@
 
             <div className="flex-1 overflow-auto bg-gray-50 p-6 h-[calc(100vh-80px)] relative">
               {currentView === 'dashboard' && <DashboardView fichas={fichas} customIngredients={customIngredients} onNavigate={setCurrentView} />}
-              {currentView === 'list' && <ListView fichas={fichas} onEdit={(f) => { setSelectedFicha(f); setCurrentView('form'); }} onPdf={(f) => { setSelectedFicha(f); setCurrentView('pdf'); }} onNew={() => { setSelectedFicha(emptyFicha); setCurrentView('form'); }} onDelete={handleDelete} onImport={(f) => { setSelectedFicha(f); setCurrentView('form'); }} />}
+              {currentView === 'list' && <ListView fichas={fichas} onEdit={(f) => { setSelectedFicha(f); setCurrentView('form'); }} onPdf={(f) => { setSelectedFicha(f); setCurrentView('pdf'); }} onNew={() => { setSelectedFicha(emptyFicha); setCurrentView('form'); }} onDelete={handleDelete} onImport={(f) => { setSelectedFicha(f); setCurrentView('form'); }} onDuplicate={handleDuplicate} />}
               {currentView === 'ingredients' && <IngredientsView ingredients={customIngredients} onSave={handleSaveIngredient} onDelete={handleDeleteIngredient} />}
               {currentView === 'form' && <FormView ficha={selectedFicha} customIngredients={customIngredients} onBack={() => setCurrentView('list')} onSave={handleSaveFicha} />}
               {currentView === 'pdf' && <PDFView ficha={selectedFicha} onBack={() => setCurrentView('list')} companySettings={companySettings} />}
@@ -655,7 +676,7 @@
       );
     };
 
-    const ListView = ({ fichas, onEdit, onPdf, onNew, onDelete, onImport }) => {
+    const ListView = ({ fichas, onEdit, onPdf, onNew, onDelete, onImport, onDuplicate }) => {
       const [search, setSearch] = useState('');
       const importPdfRef = React.useRef(null);
       const [isParsing, setIsParsing] = useState(false);
@@ -735,9 +756,10 @@
                     </td>
                     <td className="px-6 py-4 text-center text-gray-500 font-mono text-xs">v{f.version}.0<br/><span className="text-[10px] text-gray-400">{f.updatedAt}</span></td>
                     <td className="px-6 py-4 text-right space-x-1">
-                      <button onClick={() => onPdf(f)} className="p-2 text-gray-400 hover:text-[#5c3a21] hover:bg-[#F4B400] rounded"><Printer size={18} /></button>
-                      <button onClick={() => onEdit(f)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"><Edit size={18} /></button>
-                      <button onClick={() => onDelete(f.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 size={18} /></button>
+                      <button onClick={() => onPdf(f)} title="Imprimir PDF" className="p-2 text-gray-400 hover:text-[#5c3a21] hover:bg-[#F4B400] rounded transition-colors"><Printer size={18} /></button>
+                      <button onClick={() => onDuplicate(f)} title="Duplicar Ficha" className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors"><Copy size={18} /></button>
+                      <button onClick={() => onEdit(f)} title="Editar Ficha" className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"><Edit size={18} /></button>
+                      <button onClick={() => onDelete(f.id)} title="Excluir Ficha" className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"><Trash2 size={18} /></button>
                     </td>
                   </tr>
                 ))}
@@ -863,18 +885,40 @@
           reader.readAsDataURL(file);
         }
       };
+
+      const handleFichaLogoUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => setCompanySettings({ ...companySettings, fichaLogo: reader.result });
+          reader.readAsDataURL(file);
+        }
+      };
+
       return (
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <h2 className="text-xl font-bold text-[#5c3a21] mb-6 border-b pb-3 flex items-center"><Building className="mr-3 text-[#F4B400]" /> Dados da Empresa</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2 space-y-2 bg-gray-50 p-4 rounded border border-gray-200">
-                <label className="text-xs font-bold text-gray-600 uppercase">Logo da Empresa</label>
+              
+              <div className="space-y-2 bg-gray-50 p-4 rounded border border-gray-200">
+                <label className="text-xs font-bold text-gray-600 uppercase">Logo do Sistema (Menu)</label>
                 <div className="flex items-center space-x-4">
-                  {companySettings.logo ? <img src={companySettings.logo} className="h-16 w-auto border bg-white p-1" /> : <div className="h-16 w-32 border-dashed border-2 flex items-center justify-center text-xs">Sem Logo</div>}
+                  {companySettings.logo ? <img src={companySettings.logo} className="h-16 w-auto border bg-white p-1" /> : <div className="h-16 w-32 border-dashed border-2 flex items-center justify-center text-xs text-gray-400">Sem Logo</div>}
                   <input type="file" accept="image/*" onChange={handleLogoUpload} className="text-sm cursor-pointer" />
                 </div>
+                {companySettings.logo && <button onClick={() => setCompanySettings({...companySettings, logo: ''})} className="text-xs text-red-500 mt-2 hover:underline font-bold">Remover Logo</button>}
               </div>
+
+              <div className="space-y-2 bg-gray-50 p-4 rounded border border-gray-200">
+                <label className="text-xs font-bold text-gray-600 uppercase">Logo Fixa das Fichas (PDF)</label>
+                <div className="flex items-center space-x-4">
+                  {companySettings.fichaLogo ? <img src={companySettings.fichaLogo} className="h-16 w-auto border bg-white p-1" /> : <div className="h-16 w-32 border-dashed border-2 flex items-center justify-center text-xs text-center text-gray-400">Usar Padrão</div>}
+                  <input type="file" accept="image/*" onChange={handleFichaLogoUpload} className="text-sm cursor-pointer" />
+                </div>
+                {companySettings.fichaLogo && <button onClick={() => setCompanySettings({...companySettings, fichaLogo: ''})} className="text-xs text-red-500 mt-2 hover:underline font-bold">Remover Logo Fixa</button>}
+              </div>
+
             </div>
           </div>
         </div>
@@ -993,23 +1037,48 @@
       const [ingSearchModalOpen, setIngSearchModalOpen] = useState(false);
       const [ingSearchTerm, setIngSearchTerm] = useState('');
 
-      const [customIngModalOpen, setCustomIngModalOpen] = useState(false);
-      const [customIngData, setCustomIngData] = useState({
-        name: '', referencePortion: 100, kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0
-      });
-
       const [showConfirmModal, setShowConfirmModal] = useState(false);
       
-      // Estado controlador do Editor de Imagens
+      // Estado do Editor de Imagens
       const [editorState, setEditorState] = useState({ isOpen: false, src: null, type: null, stepId: null });
 
-      const tabs = [{ id: 1, label: 'Gerais' }, { id: 2, label: 'Técnicos' }, { id: 3, label: 'Ingredientes' }, { id: 4, label: 'Conservação/Validade' }, { id: 6, label: 'Preparo' }, { id: 7, label: 'Nutricional' }];
+      // Estado para Drag and Drop do Modo de Preparo
+      const [draggedStepIndex, setDraggedStepIndex] = useState(null);
+
+      const tabs = [{ id: 1, label: 'Gerais' }, { id: 2, label: 'Técnicos' }, { id: 3, label: 'Ingredientes' }, { id: 4, label: 'Conservação/Validade' }, { id: 6, label: 'Preparo' }, { id: 7, label: 'Nutricional' }, { id: 8, label: 'Aprovação' }];
 
       const updateNested = (cat, field, val) => setFormData(p => ({ ...p, [cat]: { ...p[cat], [field]: val } }));
       const addPrepStep = () => setFormData({ ...formData, preparationSteps: [...formData.preparationSteps, { id: Date.now(), title: '', desc: '', image: '' }] });
       const removePrepStep = (id) => setFormData({ ...formData, preparationSteps: formData.preparationSteps.filter(s => s.id !== id) });
       const updatePrepStep = (id, field, value) => setFormData({ ...formData, preparationSteps: formData.preparationSteps.map(s => s.id === id ? { ...s, [field]: value } : s) });
       
+      // Funções de Drag and Drop (Arrastar e Soltar)
+      const handleDragStart = (index) => {
+        setDraggedStepIndex(index);
+      };
+
+      const handleDragOver = (e, index) => {
+        e.preventDefault(); // Necessário para permitir o "drop"
+      };
+
+      const handleDrop = (index) => {
+        if (draggedStepIndex === null || draggedStepIndex === index) return;
+
+        const newSteps = [...formData.preparationSteps];
+        const draggedItem = newSteps[draggedStepIndex];
+        
+        // Remove o item da posição original
+        newSteps.splice(draggedStepIndex, 1);
+        // Insere na nova posição
+        newSteps.splice(index, 0, draggedItem);
+        
+        // Atualiza os IDs (numeração) para manter a ordem lógica (Passo 1, 2, 3...)
+        const renumberedSteps = newSteps.map((step, idx) => ({ ...step, id: idx + 1 }));
+
+        setFormData({ ...formData, preparationSteps: renumberedSteps });
+        setDraggedStepIndex(null);
+      };
+
       const handleImageUpload = (id, e) => {
         const file = e.target.files[0];
         if (file) {
@@ -1054,6 +1123,19 @@
       const updateOven = (id, field, value) => {
         const newOvens = (formData.technical.ovens || []).map(o => o.id === id ? { ...o, [field]: value } : o);
         updateNested('technical', 'ovens', newOvens);
+      };
+
+      const addRevision = () => {
+          const newHistory = [...(formData.revisionHistory || []), { id: Date.now(), date: new Date().toLocaleDateString('pt-BR'), version: formData.version || 1, notes: '' }];
+          setFormData({...formData, revisionHistory: newHistory});
+      };
+
+      const removeRevision = (id) => {
+          setFormData({...formData, revisionHistory: (formData.revisionHistory || []).filter(r => r.id !== id)});
+      };
+
+      const updateRevision = (id, field, value) => {
+          setFormData({...formData, revisionHistory: (formData.revisionHistory || []).map(r => r.id === id ? { ...r, [field]: value } : r)});
       };
 
       const filteredIngredients = customIngredients.filter(item => item.name.toLowerCase().includes(ingSearchTerm.toLowerCase()));
@@ -1305,7 +1387,7 @@
                 <div className="bg-gray-50 p-4 rounded border grid grid-cols-2 gap-4">
                    <label className="flex items-center space-x-2 font-bold text-sm"><input type="checkbox" checked={formData.ingredients.containsGluten} onChange={e => updateNested('ingredients', 'containsGluten', e.target.checked)} /> <span>Contém Glúten</span></label>
                    <label className="flex items-center space-x-2 font-bold text-sm"><input type="checkbox" checked={formData.ingredients.containsLactose} onChange={e => updateNested('ingredients', 'containsLactose', e.target.checked)} /> <span>Contém Lactose</span></label>
-                   <div className="col-span-2"><InputGroup label="Alérgicos (Derivados)" value={formData.ingredients.allergensText} onChange={v => updateNested('ingredients', 'allergensText', v)} /></div>
+                   <div className="col-span-2"><InputGroup label="Alérgicos" placeholder="Ex: CONTÉM DERIVADOS DE TRIGO..." value={formData.ingredients.allergensText} onChange={v => updateNested('ingredients', 'allergensText', v)} /></div>
                 </div>
               </div>
             )}
@@ -1322,10 +1404,22 @@
                 <button onClick={addPrepStep} className="bg-[#5c3a21] text-white px-3 py-1.5 rounded text-sm font-bold flex items-center space-x-1 mb-4"><Plus size={16}/> <span>Adicionar Etapa</span></button>
                 <div className="grid grid-cols-2 gap-4">
                   {formData.preparationSteps.map((step, index) => (
-                    <div key={step.id} className="border p-3 relative bg-gray-50 flex shadow-sm rounded">
-                      <button onClick={() => removePrepStep(step.id)} className="absolute top-2 right-2 text-red-500 z-10"><Trash2 size={16}/></button>
+                    <div 
+                        key={step.id} 
+                        className={`border p-3 relative bg-gray-50 flex shadow-sm rounded transition-all duration-200 ${draggedStepIndex === index ? 'opacity-40 scale-95 border-[#F4B400]' : ''}`}
+                        draggable
+                        onDragStart={() => handleDragStart(index)}
+                        onDragOver={(e) => handleDragOver(e, index)}
+                        onDrop={() => handleDrop(index)}
+                    >
                       
-                      <div className="w-28 h-20 bg-white border border-dashed flex-shrink-0 relative flex items-center justify-center mr-3 rounded overflow-hidden group">
+                      <div className="absolute top-2 left-2 text-gray-400 hover:text-[#5c3a21] cursor-grab active:cursor-grabbing z-10" title="Arraste para reordenar">
+                          <GripVertical size={18} />
+                      </div>
+
+                      <button onClick={() => removePrepStep(step.id)} className="absolute top-2 right-2 text-red-500 z-10 bg-white rounded-full p-1 shadow-sm hover:bg-red-50"><Trash2 size={16}/></button>
+                      
+                      <div className="w-28 h-20 bg-white border border-dashed flex-shrink-0 relative flex items-center justify-center ml-6 mr-3 rounded overflow-hidden group">
                         {step.image ? (
                           <>
                             <img src={step.image} className="w-full h-full object-cover"/>
@@ -1409,6 +1503,53 @@
                 </table>
               </div>
             )}
+            {activeTab === 8 && (
+              <div className="space-y-8">
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
+                    <div className="flex justify-between items-center border-b border-gray-200 pb-3 mb-4">
+                        <h4 className="font-bold text-[#5c3a21] flex items-center"><FileText className="mr-2" size={18}/> Histórico de Revisões</h4>
+                        <button onClick={addRevision} className="bg-[#5c3a21] text-white px-3 py-1.5 rounded text-xs font-bold flex items-center space-x-1 hover:bg-[#4a2e1a]"><Plus size={14}/> <span>Nova Revisão</span></button>
+                    </div>
+                    <div className="space-y-3">
+                        {(!formData.revisionHistory || formData.revisionHistory.length === 0) ? (
+                            <p className="text-xs text-gray-500 italic text-center py-4 bg-white rounded border border-dashed border-gray-300">Nenhum histórico registrado.</p>
+                        ) : (
+                            <table className="w-full text-sm bg-white rounded border shadow-sm">
+                                <thead className="bg-[#5c3a21] text-white">
+                                    <tr><th className="p-2 text-left">Data</th><th className="p-2 text-left w-24">Versão</th><th className="p-2 text-left">Descrição da Alteração</th><th className="p-2 w-10"></th></tr>
+                                </thead>
+                                <tbody>
+                                    {formData.revisionHistory.map(rev => (
+                                        <tr key={rev.id} className="border-b border-gray-100 hover:bg-gray-50">
+                                            <td className="p-2 w-32"><input type="text" value={rev.date} onChange={e => updateRevision(rev.id, 'date', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-sm" placeholder="DD/MM/AAAA" /></td>
+                                            <td className="p-2"><input type="number" value={rev.version} onChange={e => updateRevision(rev.id, 'version', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-sm" /></td>
+                                            <td className="p-2"><input type="text" value={rev.notes} onChange={e => updateRevision(rev.id, 'notes', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-sm" placeholder="Ex: Redução de sal na formulação." /></td>
+                                            <td className="p-2 text-center"><button onClick={() => removeRevision(rev.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded transition"><Trash2 size={16}/></button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
+                    <div className="flex justify-between items-center border-b border-gray-200 pb-3 mb-4">
+                        <h4 className="font-bold text-[#5c3a21] flex items-center"><CheckCircle className="mr-2" size={18}/> Controle de Aprovação e Assinaturas</h4>
+                        <label className="flex items-center space-x-2 font-bold text-sm bg-white px-3 py-1.5 rounded border border-gray-300 shadow-sm cursor-pointer hover:bg-gray-100 transition">
+                            <input type="checkbox" checked={formData.approval?.show || false} onChange={e => updateNested('approval', 'show', e.target.checked)} className="accent-[#F4B400] w-4 h-4" />
+                            <span>Exibir no PDF</span>
+                        </label>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <InputGroup label="Elaborado por (Nome/Cargo)" value={formData.approval?.createdBy || ''} onChange={v => updateNested('approval', 'createdBy', v)} placeholder="Ex: Ana - Qualidade" />
+                        <InputGroup label="Revisado por (Nome/Cargo)" value={formData.approval?.reviewedBy || ''} onChange={v => updateNested('approval', 'reviewedBy', v)} placeholder="Ex: Bruno - P&D" />
+                        <InputGroup label="Aprovado por (Nome/Cargo)" value={formData.approval?.approvedBy || ''} onChange={v => updateNested('approval', 'approvedBy', v)} placeholder="Ex: Carlos - Diretor" />
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-4 italic">* A data e hora de emissão será gerada automaticamente no momento da visualização/impressão do PDF.</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -1440,7 +1581,7 @@
           <div className="pdf-container shadow-2xl relative">
             <header className="flex justify-between items-end border-b-4 border-[#F4B400] pb-4 mb-6 avoid-break">
               <div className="flex items-center space-x-4">
-                 <div className="relative flex items-center mr-2">{companySettings.logo ? <img src={companySettings.logo} className="h-16 max-w-[200px] object-contain" /> : <ImacLogoSVG className="h-16" />}</div>
+                 <div className="relative flex items-center mr-2">{(companySettings.fichaLogo || companySettings.logo) ? <img src={companySettings.fichaLogo || companySettings.logo} className="h-16 max-w-[200px] object-contain" /> : <ImacLogoSVG className="h-16" />}</div>
                  <div className="pl-4 border-l-2 border-gray-300"><p className="text-xs uppercase font-black text-gray-700 tracking-wider">Indústria de Massas Congeladas</p><p className="font-bold text-lg text-black">Controle de Qualidade</p></div>
               </div>
               <div className="text-right"><h1 className="text-[22px] font-black text-black uppercase tracking-widest border-b-2 border-black inline-block mb-1">Ficha Técnica</h1><h2 className="text-2xl font-black text-[#5c3a21] mt-1">{ficha.name}</h2></div>
@@ -1474,7 +1615,7 @@
                   <div className="grid grid-cols-2 gap-2 text-center text-xs avoid-break"><div className="border border-gray-300 rounded overflow-hidden"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Pacote</div><div className="p-2 bg-gray-50">{ficha.validity.package}</div></div><div className="border border-gray-300 rounded overflow-hidden flex flex-col"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Assado</div><div className="p-2 bg-gray-50 flex-1 flex items-center justify-center font-bold">{ficha.validity.postBaking}</div></div></div>
                 </div>
                 <div className="space-y-6">
-                  <section className="avoid-break"><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Ingredientes</h3><p className="text-[13px] text-justify leading-snug">{ficha.ingredients.text}</p><p className="mt-2 text-[12px] font-black uppercase leading-tight bg-gray-100 p-2 rounded">{ficha.ingredients.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients.allergensText && `ALÉRGICOS: DERIVADOS DE ${ficha.ingredients.allergensText}.`}</p></section>
+                  <section className="avoid-break"><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Ingredientes</h3><p className="text-[13px] text-justify leading-snug">{ficha.ingredients.text}</p><p className="mt-2 text-[12px] font-black uppercase leading-tight bg-gray-100 p-2 rounded">{ficha.ingredients.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients.allergensText && `ALÉRGICOS: ${ficha.ingredients.allergensText}`}</p></section>
                   <section className="avoid-break"><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Informação Nutricional</h3><div className="border-[3px] border-black p-1.5 w-full max-w-[85%] font-sans text-black"><table className="w-full text-[12px]"><thead><tr className="border-b-[4px] border-black"><th colSpan="3" className="text-lg font-black pt-0 pb-1">INFORMAÇÃO NUTRICIONAL</th></tr><tr className="border-b-[2px] border-black"><th colSpan="3" className="font-normal text-left py-1 text-[11px] leading-tight"><span className="font-bold">Porção: {ficha.nutritional.portion}g ({ficha.nutritional.measure})</span></th></tr><tr className="border-b border-black font-black text-right"><td className="py-1 text-left"></td><td className="py-1 w-16">100 g</td><td className="py-1 w-16">% VD*</td></tr></thead><tbody>
                     <NutriPrintRow label="Valor energético (kcal)" val={ficha.nutritional.kcal} vd={Math.round((ficha.nutritional.kcal / 2000) * 100)} />
                     <NutriPrintRow label="Carboidratos (g)" val={ficha.nutritional.carbs} vd={Math.round((ficha.nutritional.carbs / 300) * 100)} />
@@ -1504,6 +1645,56 @@
                   </div>
                 </section>
               )}
+
+              {/* Histórico e Assinaturas (Se ativado) */}
+              {(ficha.revisionHistory?.length > 0 || ficha.approval?.show) && (
+                  <div className="avoid-break mt-6">
+                      {ficha.revisionHistory?.length > 0 && (
+                          <div className="mb-4">
+                              <h3 className="text-[14px] font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Histórico de Revisões</h3>
+                              <table className="w-full text-[10px] border-collapse border border-black">
+                                  <thead>
+                                      <tr className="bg-gray-100">
+                                          <th className="border border-black p-1 text-center w-20">Data</th>
+                                          <th className="border border-black p-1 text-center w-16">Versão</th>
+                                          <th className="border border-black p-1 text-left">Motivos / Alterações</th>
+                                      </tr>
+                                  </thead>
+                                  <tbody>
+                                      {ficha.revisionHistory.map(rev => (
+                                          <tr key={rev.id}>
+                                              <td className="border border-black p-1 text-center">{rev.date}</td>
+                                              <td className="border border-black p-1 text-center">v{rev.version}.0</td>
+                                              <td className="border border-black p-1">{rev.notes}</td>
+                                          </tr>
+                                      ))}
+                                  </tbody>
+                              </table>
+                          </div>
+                      )}
+
+                      {ficha.approval?.show && (
+                          <div className="border border-black p-3 bg-white mt-4 relative">
+                              <div className="text-[10px] font-bold mb-6 flex justify-between">
+                                  <span className="uppercase text-[#5c3a21]">Controle de Aprovação</span>
+                                  <span>Emissão: {new Date().toLocaleString('pt-BR')}</span>
+                              </div>
+                              <div className="grid grid-cols-3 gap-6 text-center text-[10px]">
+                                  <div>
+                                      <div className="border-t border-black pt-1 mx-4 font-bold">{ficha.approval.createdBy || 'Elaborado por'}</div>
+                                  </div>
+                                  <div>
+                                      <div className="border-t border-black pt-1 mx-4 font-bold">{ficha.approval.reviewedBy || 'Revisado por'}</div>
+                                  </div>
+                                  <div>
+                                      <div className="border-t border-black pt-1 mx-4 font-bold">{ficha.approval.approvedBy || 'Aprovado por'}</div>
+                                  </div>
+                              </div>
+                          </div>
+                      )}
+                  </div>
+              )}
+
             </div>
             <footer className="mt-auto border-t-2 border-black pt-2 text-center text-[10px] text-black font-medium leading-tight"><p className="font-black text-xs text-[#5c3a21]">{companySettings.name}</p><p>{companySettings.address} - Telefone: {companySettings.phone}</p></footer>
           </div>
