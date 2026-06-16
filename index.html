@@ -365,13 +365,11 @@
       let prepRaw = "";
       const prepMatch = normalizedText.match(/fornecidos pela por[cç][aã]o[\s\.\*\|"']*(.*?)(?:IMAC Ind[uú]stria|Av\. Cel\. C[ií]cero)/i);
       if (prepMatch) {
-          prepRaw = prepMatch[1].replace(/\|/g, '').trim(); // Remove "sujeiras" de quebra de tabela do PDF
+          prepRaw = prepMatch[1].replace(/\|/g, '').trim();
       }
 
       let prepSteps = [];
       if (prepRaw) {
-         // Quebra onde houver um título terminando em dois pontos (ex: "Pão Congelado:")
-         // Regex mais poderoso: Suporta letras acentuadas (À-ÿ), números e símbolos ordinais (º, °).
          const tokens = prepRaw.split(/([A-Z0-9À-Ÿ][A-Za-zÀ-ÿ0-9\s\-\.º°]{2,35}:)/g).filter(s => s.trim() !== "");
          
          let currentId = 1;
@@ -387,7 +385,6 @@
          }
       }
 
-      // Fallback de Segurança: Se não conseguiu fatiar em passos, joga todo o texto bruto para o usuário não perder os dados
       if (prepSteps.length === 0 && prepRaw.length > 10) {
           prepSteps.push({
               id: 1,
@@ -406,7 +403,9 @@
         validity: { package: valPacote, postBaking: valAssado, postDefrost: 'Não recongelar' },
         preparationSteps: prepSteps,
         formulation: [],
-        nutritional: { finalYield: '', portion: portion, measure: measure, kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 }
+        nutritional: { finalYield: '', portion: portion, measure: measure, kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 },
+        approval: { show: false, createdBy: '', reviewedBy: '', approvedBy: '' },
+        revisionHistory: []
       };
     };
 
@@ -477,7 +476,7 @@
         }, (err) => {
            console.error("Erro Firestore Fichas:", err);
            if (err.message && err.message.includes('Missing or insufficient permissions')) {
-               alert("⚠️ ALERTA DE PERMISSÃO DO FIREBASE!\n\nSeu banco de dados Firestore está bloqueado. O sistema usará dados locais.");
+               console.warn("ALERTA DE PERMISSÃO DO FIREBASE. O sistema usará dados locais.");
                setIsFallbackMode(true);
            }
         });
@@ -621,7 +620,7 @@
                 {currentView === 'settings' && 'Configurações do Sistema'}
                 {currentView === 'form' && (selectedFicha?.id ? `Editar Ficha: ${selectedFicha.name}` : 'Nova Ficha Técnica')}
                 {currentView === 'pdf' && 'Visualização de Impressão PDF'}
-                {isFallbackMode && <span className="ml-4 text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded uppercase font-bold border border-red-200">Modo Offline (Erro Firebase)</span>}
+                {isFallbackMode && <span className="ml-4 text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded uppercase font-bold border border-red-200">Modo Offline</span>}
               </h1>
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-full bg-[#F4B400] text-[#5c3a21] flex items-center justify-center font-bold text-lg shadow-inner">CQ</div>
@@ -640,6 +639,11 @@
               {currentView === 'pdf' && <PDFView ficha={selectedFicha} onBack={() => setCurrentView('list')} companySettings={companySettings} />}
               {currentView === 'users' && <UsersView />}
               {currentView === 'settings' && <SettingsView companySettings={companySettings} setCompanySettings={setCompanySettings} />}
+            </div>
+
+            {/* Assinatura do Desenvolvedor (Não é impressa no PDF) */}
+            <div className="no-print absolute bottom-2 right-4 text-[10px] text-gray-400 font-bold uppercase tracking-wider z-50 pointer-events-none opacity-70">
+              Desenvolvido por Cristiamberg
             </div>
           </main>
         </div>
@@ -953,7 +957,7 @@
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         const img = new Image();
-        img.crossOrigin = "anonymous"; // Permite editar imagens de URLs externas sem travar o Canvas (CORS)
+        img.crossOrigin = "anonymous";
         img.onload = () => {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
@@ -962,7 +966,6 @@
           const imgRatio = img.width / img.height;
           let drawWidth, drawHeight;
 
-          // Cobre todo o canvas (Object-fit: cover)
           if (imgRatio > canvasRatio) {
               drawHeight = canvas.height;
               drawWidth = img.width * (canvas.height / img.height);
@@ -984,11 +987,10 @@
 
       const handleConfirm = () => {
         try {
-          // Gera JPEG otimizado padronizado
           const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.85);
           onSave(dataUrl);
         } catch (error) {
-          alert("Erro de Segurança (CORS): Esta imagem de link externo não permite edição nativa pelo navegador. Por favor, faça o upload direto do seu computador para editá-la.");
+          alert("Erro de Segurança (CORS): Esta imagem não permite edição nativa pelo navegador. Faça o upload direto do seu computador para editá-la.");
         }
       };
 
@@ -1065,7 +1067,7 @@
       };
 
       const handleDragOver = (e, index) => {
-        e.preventDefault(); // Necessário para permitir o "drop"
+        e.preventDefault(); 
       };
 
       const handleDrop = (index) => {
@@ -1074,12 +1076,9 @@
         const newSteps = [...formData.preparationSteps];
         const draggedItem = newSteps[draggedStepIndex];
         
-        // Remove o item da posição original
         newSteps.splice(draggedStepIndex, 1);
-        // Insere na nova posição
         newSteps.splice(index, 0, draggedItem);
         
-        // Atualiza os IDs (numeração) para manter a ordem lógica (Passo 1, 2, 3...)
         const renumberedSteps = newSteps.map((step, idx) => ({ ...step, id: idx + 1 }));
 
         setFormData({ ...formData, preparationSteps: renumberedSteps });
@@ -1133,7 +1132,7 @@
       };
 
       const addRevision = () => {
-          const newHistory = [...(formData.revisionHistory || []), { id: Date.now(), date: new Date().toLocaleDateString('pt-BR'), version: formData.version || 1, notes: '', editedBy: '', reviewedBy: '', approvedBy: '' }];
+          const newHistory = [...(formData.revisionHistory || []), { id: Date.now(), date: new Date().toLocaleDateString('pt-BR'), version: formData.version || 1, notes: '', createdBy: '', reviewedBy: '', approvedBy: '' }];
           setFormData({...formData, revisionHistory: newHistory});
       };
 
@@ -1521,42 +1520,33 @@
                         {(!formData.revisionHistory || formData.revisionHistory.length === 0) ? (
                             <p className="text-xs text-gray-500 italic text-center py-4 bg-white rounded border border-dashed border-gray-300">Nenhum histórico registrado.</p>
                         ) : (
-                            <table className="w-full text-sm bg-white rounded border shadow-sm">
-                                <thead className="bg-[#5c3a21] text-white">
-                                    <tr>
-                                        <th className="p-2 text-left w-28">Data / Versão</th>
-                                        <th className="p-2 text-left">Motivo da Alteração</th>
-                                        <th className="p-2 text-left w-48">Responsáveis</th>
-                                        <th className="p-2 w-10"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {formData.revisionHistory.map(rev => (
-                                        <tr key={rev.id} className="border-b border-gray-100 hover:bg-gray-50 align-top">
-                                            <td className="p-2 space-y-2">
-                                                <input type="text" value={rev.date} onChange={e => updateRevision(rev.id, 'date', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-sm" placeholder="DD/MM/AAAA" />
-                                                <div className="flex items-center space-x-1"><span className="text-xs font-bold text-gray-500">v</span><input type="number" value={rev.version} onChange={e => updateRevision(rev.id, 'version', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-sm" /></div>
-                                            </td>
-                                            <td className="p-2">
-                                                <textarea value={rev.notes} onChange={e => updateRevision(rev.id, 'notes', e.target.value)} className="w-full h-full min-h-[80px] p-2 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-sm resize-none" placeholder="Ex: Redução de sal na formulação." />
-                                            </td>
-                                            <td className="p-2 space-y-2">
-                                                <input type="text" value={rev.editedBy || ''} onChange={e => updateRevision(rev.id, 'editedBy', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-xs" placeholder="Elaborado por..." />
-                                                <input type="text" value={rev.reviewedBy || ''} onChange={e => updateRevision(rev.id, 'reviewedBy', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-xs" placeholder="Revisado por..." />
-                                                <input type="text" value={rev.approvedBy || ''} onChange={e => updateRevision(rev.id, 'approvedBy', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400] text-xs" placeholder="Aprovado por..." />
-                                            </td>
-                                            <td className="p-2 text-center pt-3"><button onClick={() => removeRevision(rev.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded transition"><Trash2 size={16}/></button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            <div className="space-y-4">
+                                {formData.revisionHistory.map((rev, index) => (
+                                    <div key={rev.id} className="bg-white p-4 rounded border border-gray-200 shadow-sm relative">
+                                        <button onClick={() => removeRevision(rev.id)} className="absolute top-2 right-2 text-red-500 hover:bg-red-50 p-1.5 rounded transition"><Trash2 size={16}/></button>
+                                        <div className="font-bold text-[#5c3a21] mb-3 text-sm border-b pb-1">Revisão #{index + 1}</div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                            <InputGroup label="Data" value={rev.date} onChange={v => updateRevision(rev.id, 'date', v)} placeholder="DD/MM/AAAA" />
+                                            <InputGroup label="Versão" type="number" value={rev.version} onChange={v => updateRevision(rev.id, 'version', v)} />
+                                            <div className="col-span-1 md:col-span-2">
+                                                <InputGroup label="Descrição da Alteração" value={rev.notes} onChange={v => updateRevision(rev.id, 'notes', v)} placeholder="Ex: Redução de sal e adequação de layout." />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-3 rounded border">
+                                            <InputGroup label="Elaborado por" value={rev.createdBy} onChange={v => updateRevision(rev.id, 'createdBy', v)} placeholder="Ex: Ana (P&D)" />
+                                            <InputGroup label="Revisado por" value={rev.reviewedBy} onChange={v => updateRevision(rev.id, 'reviewedBy', v)} placeholder="Ex: Bruno (Qualidade)" />
+                                            <InputGroup label="Aprovado por" value={rev.approvedBy} onChange={v => updateRevision(rev.id, 'approvedBy', v)} placeholder="Ex: Carlos (Diretor)" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </div>
                 </div>
 
                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
                     <div className="flex justify-between items-center border-b border-gray-200 pb-3 mb-4">
-                        <h4 className="font-bold text-[#5c3a21] flex items-center"><CheckCircle className="mr-2" size={18}/> Controle de Aprovação e Assinaturas</h4>
+                        <h4 className="font-bold text-[#5c3a21] flex items-center"><CheckCircle className="mr-2" size={18}/> Controle de Aprovação da Ficha</h4>
                         <label className="flex items-center space-x-2 font-bold text-sm bg-white px-3 py-1.5 rounded border border-gray-300 shadow-sm cursor-pointer hover:bg-gray-100 transition">
                             <input type="checkbox" checked={formData.approval?.show || false} onChange={e => updateNested('approval', 'show', e.target.checked)} className="accent-[#F4B400] w-4 h-4" />
                             <span>Exibir no PDF</span>
@@ -1676,12 +1666,12 @@
                               <table className="w-full text-[9px] border-collapse border border-black">
                                   <thead>
                                       <tr className="bg-gray-100">
-                                          <th className="border border-black p-1 text-center w-14">Data</th>
-                                          <th className="border border-black p-1 text-center w-8">Ver.</th>
+                                          <th className="border border-black p-1 text-center w-16">Data</th>
+                                          <th className="border border-black p-1 text-center w-10">Versão</th>
                                           <th className="border border-black p-1 text-left">Motivos / Alterações</th>
-                                          <th className="border border-black p-1 text-center w-[15%]">Elaborado por</th>
-                                          <th className="border border-black p-1 text-center w-[15%]">Revisado por</th>
-                                          <th className="border border-black p-1 text-center w-[15%]">Aprovado por</th>
+                                          <th className="border border-black p-1 text-center w-24">Elaborador</th>
+                                          <th className="border border-black p-1 text-center w-24">Revisor</th>
+                                          <th className="border border-black p-1 text-center w-24">Aprovador</th>
                                       </tr>
                                   </thead>
                                   <tbody>
@@ -1690,9 +1680,9 @@
                                               <td className="border border-black p-1 text-center">{rev.date}</td>
                                               <td className="border border-black p-1 text-center">v{rev.version}.0</td>
                                               <td className="border border-black p-1">{rev.notes}</td>
-                                              <td className="border border-black p-1 text-center truncate max-w-[60px]">{rev.editedBy || '-'}</td>
-                                              <td className="border border-black p-1 text-center truncate max-w-[60px]">{rev.reviewedBy || '-'}</td>
-                                              <td className="border border-black p-1 text-center truncate max-w-[60px]">{rev.approvedBy || '-'}</td>
+                                              <td className="border border-black p-1 text-center">{rev.createdBy}</td>
+                                              <td className="border border-black p-1 text-center">{rev.reviewedBy}</td>
+                                              <td className="border border-black p-1 text-center">{rev.approvedBy}</td>
                                           </tr>
                                       ))}
                                   </tbody>
