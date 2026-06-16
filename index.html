@@ -157,7 +157,7 @@
           { id: 4, title: 'Pão Assado', desc: 'Assar em forno Lastro: 200°C/17min com vapor ligado; Turbo: 175°C/17min com vapor e turbo ligados.', image: '' }
         ],
         formulation: [],
-        nutritional: { finalYield: '', portion: 50, measure: '5/7 unidade', kcal: 140, carbs: 24, totalSugars: 0, addedSugars: 0, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 242 }
+        nutritional: { finalYield: '', portionsPerPackage: 100, portion: 50, measure: '5/7 unidade', kcal: 140, carbs: 24, totalSugars: 0, addedSugars: 0, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 242 }
       },
       {
         id: 'PC-001',
@@ -180,7 +180,7 @@
           { id: 4, title: 'Pão Assado', desc: 'Assar em forno Lastro: 200°C/17min com vapor ligado; Turbo: 175°C/17min com vapor ligado.', image: '' }
         ],
         formulation: [],
-        nutritional: { finalYield: '', portion: 50, measure: '5/7 unidade', kcal: 140, carbs: 24, totalSugars: 0, addedSugars: 0, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 241 }
+        nutritional: { finalYield: '', portionsPerPackage: 100, portion: 50, measure: '5/7 unidade', kcal: 140, carbs: 24, totalSugars: 0, addedSugars: 0, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 241 }
       },
       {
         id: 'DN-001',
@@ -203,7 +203,7 @@
           { id: 4, title: 'Donuts Prontos', desc: 'Fritadeira: Pré-aquecida a 150°C colocar 4 donuts por vez na fritadeira e virar o lado para que a fritura fique uniforme. Após virá-los, pressionar com auxílio do escorredor da fritadeira para que sejam mantidos imersos no óleo.', image: '' }
         ],
         formulation: [],
-        nutritional: { finalYield: '', portion: 50, measure: '5/6 unidade', kcal: 137, carbs: 23, totalSugars: 2, addedSugars: 1, proteins: 3, totalFats: 2, satFats: 1, transFats: 0, fiber: 1, sodium: 241 }
+        nutritional: { finalYield: '', portionsPerPackage: 100, portion: 50, measure: '5/6 unidade', kcal: 137, carbs: 23, totalSugars: 2, addedSugars: 1, proteins: 3, totalFats: 2, satFats: 1, transFats: 0, fiber: 1, sodium: 241 }
       },
       {
         id: 'PFL-001',
@@ -226,7 +226,7 @@
           { id: 4, title: 'Pão Assado', desc: 'Assar em forno Lastro: 200°C/17min com vapor ligado; Turbo: 175°C/17min com vapor e turbo ligados.', image: '' }
         ],
         formulation: [],
-        nutritional: { finalYield: '', portion: 50, measure: '5/7 unidade', kcal: 127, carbs: 23, totalSugars: 0, addedSugars: 0, proteins: 3, totalFats: 2, satFats: 0, transFats: 0, fiber: 2, sodium: 235 }
+        nutritional: { finalYield: '', portionsPerPackage: 100, portion: 50, measure: '5/7 unidade', kcal: 127, carbs: 23, totalSugars: 0, addedSugars: 0, proteins: 3, totalFats: 2, satFats: 0, transFats: 0, fiber: 2, sodium: 235 }
       }
     ];
 
@@ -245,7 +245,7 @@
       validity: { package: '', postBaking: '', postDefrost: '' },
       preparationSteps: [],
       formulation: [], 
-      nutritional: { finalYield: '', portion: 0, measure: '', kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 },
+      nutritional: { finalYield: '', portionsPerPackage: 100, portion: 0, measure: '', kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 },
       approval: { show: false, createdBy: '', reviewedBy: '', approvedBy: '' },
       revisionHistory: []
     };
@@ -288,6 +288,7 @@
       const valPacote = getMatch(/Validade do Pacote\s*(\d+\s+dias)/i, "60 dias");
       const valAssado = getMatch(/Validade Após o Assamento\s*(.*?)\./i) || getMatch(/Validade Após o Assamento\s*(.*?)\s+Ingredientes/i, "Diário");
 
+      const portionsPkg = getMatch(/Porções por embalagem:\s*(\d+)/i, "100");
       const portion = getMatch(/Porção:\s*(\d+)g/i, "50");
       const measure = getMatch(/Porção:\s*\d+g\s*\((.*?)\)/i, "");
 
@@ -331,7 +332,7 @@
         validity: { package: valPacote, postBaking: valAssado, postDefrost: 'Não recongelar' },
         preparationSteps: prepSteps,
         formulation: [],
-        nutritional: { finalYield: '', portion: portion, measure: measure, kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 },
+        nutritional: { finalYield: '', portionsPerPackage: portionsPkg, portion: portion, measure: measure, kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 },
         approval: { show: false, createdBy: '', reviewedBy: '', approvedBy: '' },
         revisionHistory: []
       };
@@ -1342,10 +1343,11 @@
                         ))
                      )}
                    </div>
-                   <div className="grid grid-cols-2 gap-4 mt-4 bg-white p-3 rounded border border-gray-200 shadow-sm">
-                      <InputGroup label="Rendimento Final da Receita (g)" type="number" value={formData.nutritional.finalYield || ''} onChange={v => { updateNested('nutritional', 'finalYield', v); recalcFormulation(formData.formulation, v, formData.nutritional.portion); }} />
+                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 bg-white p-3 rounded border border-gray-200 shadow-sm">
+                      <InputGroup label="Rendimento Final (g)" type="number" value={formData.nutritional.finalYield || ''} onChange={v => { updateNested('nutritional', 'finalYield', v); recalcFormulation(formData.formulation, v, formData.nutritional.portion); }} />
                       <InputGroup label="Porção Analisada (g)" type="number" value={formData.nutritional.portion} onChange={v => { updateNested('nutritional', 'portion', v); recalcFormulation(formData.formulation, formData.nutritional.finalYield, v); }} />
-                      <div className="col-span-2"><InputGroup label="Medida Caseira" value={formData.nutritional.measure} onChange={v => updateNested('nutritional', 'measure', v)} /></div>
+                      <InputGroup label="Medida Caseira" value={formData.nutritional.measure} onChange={v => updateNested('nutritional', 'measure', v)} />
+                      <InputGroup label="Porções/Embalagem" type="number" value={formData.nutritional.portionsPerPackage} onChange={v => updateNested('nutritional', 'portionsPerPackage', v)} />
                    </div>
                 </div>
 
@@ -1470,7 +1472,7 @@
               <div className="block mb-2">
                 <div className="grid grid-cols-[1fr_1.3fr] gap-5 mb-2">
                   <div className="space-y-3">
-                    {/* Imagem de Capa Aumentada (h-44) */}
+                    {/* Imagem de Capa */}
                     <div className="border-[3px] border-[#F4B400] rounded-lg overflow-hidden h-44 w-full"><img src={ficha.coverImage} className="w-full h-full object-cover" /></div>
                     
                     <div className="bg-white rounded border border-gray-200 p-2 text-[10px] space-y-1.5 shadow-sm text-gray-800 leading-tight">
@@ -1515,30 +1517,41 @@
                       <p className="mt-1 text-[9px] font-black uppercase leading-tight bg-gray-100 p-1.5 rounded">{ficha.ingredients.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients.allergensText && `ALÉRGICOS: ${ficha.ingredients.allergensText}`}</p>
                     </section>
                     
-                    <section className="avoid-break">
-                      <h3 className="text-[13px] font-black text-[#5c3a21] border-b border-black pb-0.5 mb-1">Informação Nutricional</h3>
-                      <div className="border-[2px] border-black p-1 w-full font-sans text-black">
-                        <table className="w-full text-[9px]">
+                    <section className="avoid-break flex justify-start">
+                      <div className="w-[80%] font-sans text-black">
+                        <table className="w-full text-[9px] border-collapse border border-black">
                           <thead>
-                            <tr className="border-b-[2px] border-black"><th colSpan="3" className="text-[11px] font-black pt-0 pb-0.5">INFORMAÇÃO NUTRICIONAL</th></tr>
-                            <tr className="border-b-[1px] border-black"><th colSpan="3" className="font-normal text-left py-0.5 text-[9px] leading-tight"><span className="font-bold">Porção: {ficha.nutritional.portion}g ({ficha.nutritional.measure})</span></th></tr>
-                            <tr className="border-b border-black font-black text-right"><td className="py-0.5 text-left"></td><td className="py-0.5 w-12">100 g</td><td className="py-0.5 w-12">% VD*</td></tr>
+                            <tr>
+                              <th colSpan="4" className="text-[11px] font-black pt-0.5 pb-0.5 text-center border-b border-black">INFORMAÇÃO NUTRICIONAL</th>
+                            </tr>
+                            <tr>
+                              <th colSpan="4" className="font-normal text-left px-1 py-0.5 text-[9px] leading-tight border-b border-black">
+                                Porções por embalagem: {ficha.nutritional.portionsPerPackage || 100}<br/>
+                                Porção: {ficha.nutritional.portion}g ({ficha.nutritional.measure})
+                              </th>
+                            </tr>
+                            <tr className="border-b border-black font-black text-center">
+                              <td className="py-0.5 px-1 text-left border-r border-black w-[45%]"></td>
+                              <td className="py-0.5 px-1 border-r border-black w-[18%]">100 g</td>
+                              <td className="py-0.5 px-1 border-r border-black w-[18%]">{ficha.nutritional.portion} g</td>
+                              <td className="py-0.5 px-1 w-[19%]">% VD*</td>
+                            </tr>
                           </thead>
                           <tbody>
-                            <NutriPrintRow label="Valor energético (kcal)" val={ficha.nutritional.kcal} vd={Math.round((ficha.nutritional.kcal / 2000) * 100)} />
-                            <NutriPrintRow label="Carboidratos (g)" val={ficha.nutritional.carbs} vd={Math.round((ficha.nutritional.carbs / 300) * 100)} />
-                            <NutriPrintRow label="Açúcares totais (g)" val={ficha.nutritional.totalSugars} vd="-" />
-                            <NutriPrintRow label="Açúcares adicionados (g)" val={ficha.nutritional.addedSugars} vd={Math.round((ficha.nutritional.addedSugars / 50) * 100)} />
-                            <NutriPrintRow label="Proteínas (g)" val={ficha.nutritional.proteins} vd={Math.round((ficha.nutritional.proteins / 50) * 100)} />
-                            <NutriPrintRow label="Gorduras totais (g)" val={ficha.nutritional.totalFats} vd={Math.round((ficha.nutritional.totalFats / 55) * 100)} />
-                            <NutriPrintRow label="Gorduras saturadas (g)" val={ficha.nutritional.satFats} vd={Math.round((ficha.nutritional.satFats / 22) * 100)} />
-                            <NutriPrintRow label="Gorduras trans (g)" val={ficha.nutritional.transFats} vd={ficha.nutritional.transFats > 0 ? '**' : '0'} />
-                            <NutriPrintRow label="Fibra alimentar (g)" val={ficha.nutritional.fiber} vd={Math.round((ficha.nutritional.fiber / 25) * 100)} />
-                            <NutriPrintRow label="Sódio (mg)" val={ficha.nutritional.sodium} vd={Math.round((ficha.nutritional.sodium / 2000) * 100)} borderBottom={false} />
+                            <NutriPrintRow label="Valor energético (kcal)" val={ficha.nutritional.kcal} vd={Math.round((ficha.nutritional.kcal / 2000) * 100)} portion={ficha.nutritional.portion} />
+                            <NutriPrintRow label="Carboidratos (g)" val={ficha.nutritional.carbs} vd={Math.round((ficha.nutritional.carbs / 300) * 100)} portion={ficha.nutritional.portion} />
+                            <NutriPrintRow label="Açúcares totais (g)" val={ficha.nutritional.totalSugars} vd="-" portion={ficha.nutritional.portion} />
+                            <NutriPrintRow label="Açúcares adicionados (g)" val={ficha.nutritional.addedSugars} vd={Math.round((ficha.nutritional.addedSugars / 50) * 100)} portion={ficha.nutritional.portion} />
+                            <NutriPrintRow label="Proteínas (g)" val={ficha.nutritional.proteins} vd={Math.round((ficha.nutritional.proteins / 50) * 100)} portion={ficha.nutritional.portion} />
+                            <NutriPrintRow label="Gorduras totais (g)" val={ficha.nutritional.totalFats} vd={Math.round((ficha.nutritional.totalFats / 55) * 100)} portion={ficha.nutritional.portion} />
+                            <NutriPrintRow label="Gorduras saturadas (g)" val={ficha.nutritional.satFats} vd={Math.round((ficha.nutritional.satFats / 22) * 100)} portion={ficha.nutritional.portion} />
+                            <NutriPrintRow label="Gorduras trans (g)" val={ficha.nutritional.transFats} vd={ficha.nutritional.transFats > 0 ? '**' : '0'} portion={ficha.nutritional.portion} />
+                            <NutriPrintRow label="Fibra alimentar (g)" val={ficha.nutritional.fiber} vd={Math.round((ficha.nutritional.fiber / 25) * 100)} portion={ficha.nutritional.portion} />
+                            <NutriPrintRow label="Sódio (mg)" val={ficha.nutritional.sodium} vd={Math.round((ficha.nutritional.sodium / 2000) * 100)} portion={ficha.nutritional.portion} borderBottom={false} />
                           </tbody>
                         </table>
+                        <p className="text-[7px] mt-0.5 text-black">*Percentual de valores diários fornecidos pela porção.</p>
                       </div>
-                      <p className="text-[7px] mt-0.5 text-black">*Percentual de valores diários fornecidos pela porção.</p>
                     </section>
                   </div>
                 </div>
@@ -1550,7 +1563,6 @@
                       {ficha.preparationSteps.map((step, idx) => (
                         <div key={idx} className="relative avoid-break">
                           <div className="font-black text-[11px] text-[#5c3a21] mb-0.5 leading-none"><span className="text-[#F4B400] text-sm mr-1">•</span>{step.title}:</div>
-                          {/* Imagens de Preparo Aumentadas (h-28 = 112px) */}
                           {step.image && (<div className="w-full h-28 mb-1 bg-gray-100 rounded overflow-hidden border border-gray-200"><img src={step.image} className="w-full h-full object-cover" /></div>)}
                           <p className="text-[10px] text-justify leading-tight text-gray-800">{step.desc}</p>
                         </div>
@@ -1638,7 +1650,21 @@
       );
     };
 
-    const NutriPrintRow = ({ label, val, vd, borderBottom = true }) => (<tr className={borderBottom ? "border-b border-gray-400" : ""}><td className="py-0.5">{label}</td><td className="text-right py-0.5">{val}</td><td className="text-right py-0.5">{vd}</td></tr>);
+    const NutriPrintRow = ({ label, val, vd, borderBottom = true, portion }) => {
+      const numVal = parseFloat(val) || 0;
+      const numPortion = parseFloat(portion) || 1;
+      const val100 = portion ? Number(((numVal / numPortion) * 100).toFixed(1)).toString().replace('.0', '') : 0;
+      const displayVal = Number(numVal.toFixed(1)).toString().replace('.0', '');
+
+      return (
+        <tr className={borderBottom ? "border-b border-black" : ""}>
+          <td className="py-0.5 px-1 border-r border-black">{label}</td>
+          <td className="py-0.5 px-1 text-center border-r border-black">{val100}</td>
+          <td className="py-0.5 px-1 text-center border-r border-black">{displayVal}</td>
+          <td className="py-0.5 px-1 text-center">{vd}</td>
+        </tr>
+      );
+    };
 
     // Inicializa o App
     const root = createRoot(document.getElementById('root'));
