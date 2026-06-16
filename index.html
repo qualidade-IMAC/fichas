@@ -1567,7 +1567,13 @@
               <div className="page-break pt-6 flex flex-col h-full min-h-[200mm]">
                   <header className="flex justify-between items-end border-b-2 border-gray-300 pb-2 mb-6 opacity-60">
                     <div className="flex items-center space-x-3">
-                       <ImacLogoSVG className="h-8 grayscale" />
+                       <div className="relative flex items-center">
+                          {(companySettings.fichaLogo || companySettings.logo) ? (
+                              <img src={companySettings.fichaLogo || companySettings.logo} className="h-8 max-w-[120px] object-contain" />
+                          ) : (
+                              <ImacLogoSVG className="h-8 grayscale" />
+                          )}
+                       </div>
                        <div className="pl-3 border-l border-gray-300"><p className="text-[8px] uppercase font-black text-gray-700 tracking-wider">Ficha Técnica: {ficha.code}</p></div>
                     </div>
                     <div className="text-right text-[9px] font-bold text-gray-500">Página 2 - Anexos Administrativos</div>
