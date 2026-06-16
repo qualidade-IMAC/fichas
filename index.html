@@ -8,6 +8,17 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
+  <!-- Import Map para resolver o React e o JSX Runtime do Babel -->
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client"
+      }
+    }
+  </script>
+
   <!-- Babel Standalone (Para rodar React no navegador) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
@@ -44,8 +55,8 @@
 
   <!-- Script Principal React -->
   <script type="text/babel" data-type="module">
-    import React, { useState, useEffect } from 'https://esm.sh/react@18.2.0';
-    import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
+    import React, { useState, useEffect } from 'react';
+    import { createRoot } from 'react-dom/client';
     import * as Lucide from 'https://esm.sh/lucide-react@0.292.0';
     
     // Utilizando a CDN oficial do Google (gstatic) para o Firebase
@@ -57,7 +68,7 @@
     const {
       LayoutDashboard, FileText, Users, Settings, Plus, Search, Filter,
       Edit, Printer, CheckCircle, Info, Database, Upload, Trash2, ArrowLeft,
-      Building, MapPin, Phone, Mail, X, Image: ImageIcon, Save, Calculator
+      Building, MapPin, Phone, Mail, X, Image: ImageIcon, Save, Calculator, Package
     } = Lucide;
 
     // ============================================================================
@@ -77,7 +88,7 @@
     const db = getFirestore(app);
 
     // ============================================================================
-    // COMPONENTE VETORIAL DA LOGO E BANCO TACO EXPANDIDO
+    // COMPONENTE VETORIAL DA LOGO E BANCO DE DADOS MOCK
     // ============================================================================
     const ImacLogoSVG = ({ className = "h-12" }) => (
       <svg className={className} viewBox="0 0 160 65" xmlns="http://www.w3.org/2000/svg">
@@ -91,39 +102,197 @@
       </svg>
     );
 
-    // Valores Nutricionais baseados em 100g de produto
-    const mockTACO = [
-      { id: 1, name: 'Pão, francês', kcal: 300, carbs: 58.6, proteins: 8.0, totalFats: 3.1, satFats: 0.9, transFats: 0, fiber: 2.3, sodium: 648 },
-      { id: 2, name: 'Farinha de trigo, especial', kcal: 346, carbs: 73.3, proteins: 9.8, totalFats: 1.4, satFats: 0.3, transFats: 0, fiber: 2.3, sodium: 1 },
-      { id: 3, name: 'Leite, vaca, integral', kcal: 57, carbs: 4.5, proteins: 3.3, totalFats: 3.0, satFats: 1.7, transFats: 0, fiber: 0, sodium: 50 },
-      { id: 4, name: 'Ovo, de galinha, inteiro, cru', kcal: 143, carbs: 1.6, proteins: 13.0, totalFats: 8.9, satFats: 2.7, transFats: 0, fiber: 0, sodium: 168 },
-      { id: 5, name: 'Manteiga, sem sal', kcal: 726, carbs: 0.1, proteins: 0.4, totalFats: 82.4, satFats: 49.3, transFats: 2.0, fiber: 0, sodium: 8 },
-      { id: 6, name: 'Margarina com sal', kcal: 717, carbs: 0, proteins: 0, totalFats: 81.0, satFats: 23.0, transFats: 15.0, fiber: 0, sodium: 800 },
-      { id: 7, name: 'Açúcar, cristal', kcal: 387, carbs: 99.6, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 1 },
-      { id: 8, name: 'Sal refinado', kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 39000 },
-      { id: 9, name: 'Queijo, muçarela', kcal: 327, carbs: 3.0, proteins: 22.6, totalFats: 25.0, satFats: 16.0, transFats: 0.8, fiber: 0, sodium: 580 },
-      { id: 10, name: 'Fermento biológico fresco', kcal: 89, carbs: 8.0, proteins: 12.0, totalFats: 1.0, satFats: 0.2, transFats: 0, fiber: 5.0, sodium: 15 },
-    ];
-
     const mockFichas = [
       {
         id: 'PF-001',
         code: 'PF-001',
-        name: 'Pão Francês Exemplo',
+        name: 'Pão Francês',
         category: 'Pães',
         version: 1,
         status: 'active',
-        updatedAt: '15/06/2026',
+        updatedAt: '16/06/2026',
         coverImage: 'https://images.unsplash.com/photo-1598373182133-52452f7691ef?w=800&q=80',
-        general: { brand: 'IMAC', description: 'Pão francês (Dados de Teste).' },
-        technical: { unitsPerPackage: 71, packageWeight: '5 kg', unitWeight: '70g', perTray: 20, ovens: [{ id: 1, name: 'Forno Lastro', temp: '200°C', time: '17 min', vapor: 'Sim' }, { id: 2, name: 'Forno Turbo', temp: '175°C', time: '17 min', vapor: 'Sim' }] },
-        ingredients: { text: 'Farinha, água, sal...', containsGluten: true, containsLactose: false, allergensText: 'Trigo' },
-        conservation: { frozen: '-12°C', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
+        general: { brand: 'IMAC', description: 'Pão Francês Tradicional IMAC.' },
+        technical: { unitsPerPackage: 71, packageWeight: '5 kg', unitWeight: '70g', perTray: 20, ovens: [{ id: 1, name: 'Forno Lastro', temp: '200°C', time: '17 min', vapor: 'Sim' }, { id: 2, name: 'Forno Turbo', temp: '180°C', time: '17 min', vapor: 'Sim' }] },
+        ingredients: { text: 'Farinha de trigo enriquecida de ferro e ácido fólico, água, sal, fermento biológico, propionato de cálcio (conservante), reforçador de farinha (AC. Ascórbico/INS 300).', containsGluten: true, containsLactose: false, allergensText: 'DERIVADOS DE TRIGO E DE SOJA' },
+        conservation: { frozen: '-12°C ou mais frio', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
         validity: { package: '60 dias', postBaking: 'Diário', postDefrost: 'Não recongelar' },
-        preparationSteps: [],
+        preparationSteps: [
+          { id: 1, title: 'Pão Congelado', desc: 'Após aplicar untaforma, colocar 20 pães por tela; Deixar os pães no carrinho para desgelo por 1 hora.', image: '' },
+          { id: 2, title: 'Pão em Desgelo', desc: 'Após o desgelo, borrifar água nos pães e mãos, modelar e ajustá-los. Levar a tela de volta ao carrinho, colocar saco aberto cobrindo as telas e fechar a porta do mesmo. Borrifar água nos pães a cada 1 hora.', image: '' },
+          { id: 3, title: 'Pão em Fermentação', desc: 'Deixar os pães fermentarem por 5 a 6 horas (dependendo da temperatura do local); Após esse período, borrifar água nos pães e fazer 1 corte horizontal em cada.', image: '' },
+          { id: 4, title: 'Pão Assado', desc: 'Assar em forno Lastro: 200°C/17min com vapor ligado; Turbo: 175°C/17min com vapor e turbo ligados.', image: '' }
+        ],
         formulation: [],
-        nutritional: { finalYield: '', portion: 50, measure: '1 unidade', kcal: 140, carbs: 24, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 242 }
+        nutritional: { finalYield: '', portion: 50, measure: '5/7 unidade', kcal: 140, carbs: 24, totalSugars: 0, addedSugars: 0, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 242 }
+      },
+      {
+        id: 'PC-001',
+        code: 'PC-001',
+        name: 'Pão Ciabatta',
+        category: 'Pães Especiais',
+        version: 1,
+        status: 'active',
+        updatedAt: '16/06/2026',
+        coverImage: 'https://images.unsplash.com/photo-1550617931-e17a7b70dce2?w=800&q=80',
+        general: { brand: 'IMAC', description: 'Pão rústico de fermentação especial.' },
+        technical: { unitsPerPackage: 71, packageWeight: '5 kg', unitWeight: '70g', perTray: 20, ovens: [{ id: 1, name: 'Forno Lastro', temp: '200°C', time: '17 min', vapor: 'Sim' }, { id: 2, name: 'Forno Turbo', temp: '175°C', time: '17 min', vapor: 'Sim' }] },
+        ingredients: { text: 'Farinha de trigo enriquecida com ferro e ácido fólico, água, sal, fermento biológico, aroma de manteiga, propionato de cálcio (conservante), reforçador de farinha (AC. Ascórbico/INS 300).', containsGluten: true, containsLactose: false, allergensText: 'DERIVADOS DE TRIGO E DE SOJA' },
+        conservation: { frozen: '-12°C ou mais frio', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
+        validity: { package: '60 dias', postBaking: 'Diário', postDefrost: 'Não recongelar' },
+        preparationSteps: [
+          { id: 1, title: 'Pão Congelado', desc: 'Após aplicar untaforma, colocar 20 pães por tela; Deixar os pães no carrinho para desgelo por 1 hora.', image: '' },
+          { id: 2, title: 'Pão em Desgelo', desc: 'Após o desgelo, borrifar água nos pães e mãos, modelar e ajustar os pães. Colocar saco aberto cobrindo as telas e fechar a porta do mesmo. Borrifar água nos pães a cada 1 hora.', image: '' },
+          { id: 3, title: 'Pão em Fermentação', desc: 'Deixar os pães fermentarem por 5 a 6 horas (dependendo da temperatura do local). Após esse período, borrifar água nos pães e fazer 1 corte na horizontal em cada um (pode-se polvilhar farinha de trigo sobre os mesmos antes do corte).', image: '' },
+          { id: 4, title: 'Pão Assado', desc: 'Assar em forno Lastro: 200°C/17min com vapor ligado; Turbo: 175°C/17min com vapor ligado.', image: '' }
+        ],
+        formulation: [],
+        nutritional: { finalYield: '', portion: 50, measure: '5/7 unidade', kcal: 140, carbs: 24, totalSugars: 0, addedSugars: 0, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 241 }
+      },
+      {
+        id: 'DN-001',
+        code: 'DN-001',
+        name: 'Donuts',
+        category: 'Doces / Fritos',
+        version: 1,
+        status: 'active',
+        updatedAt: '16/06/2026',
+        coverImage: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=800&q=80',
+        general: { brand: 'IMAC', description: 'Donuts congelados para fritura.' },
+        technical: { unitsPerPackage: 75, packageWeight: '5 kg', unitWeight: '66g', perTray: 12, ovens: [{ id: 1, name: 'Fritadeira', temp: '150°C', time: 'Varia', vapor: 'Não' }] },
+        ingredients: { text: 'Farinha de trigo enriquecido com ferro e ácido fólico, mistura para donuts (farinha de trigo, dextrose, gordura vegetal, sal, farinha de soja, soro de leite em pó, leite integral em pó. Emulsificantes: mono e diglicerídeos, estearoil-2-lactil lactato de sódio; fermentos químicos: bicarbonato de sódio, pirofosfato, fosfato monocalcio; espessantes: goma guar, CMC; aromas; antioxidante; cloridrato de L-cisteína.), água, fermento biológico e melhorador.', containsGluten: true, containsLactose: true, allergensText: 'DERIVADOS DE LEITE, TRIGO E SOJA. PODE CONTER OVO, CEVADA E CASTANHA DE CAJÚ' },
+        conservation: { frozen: '-12°C ou mais frio', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
+        validity: { package: '60 dias', postBaking: 'Diário', postDefrost: 'Não recongelar' },
+        preparationSteps: [
+          { id: 1, title: 'Donuts Congelados', desc: 'Após aplicar untaforma, colocar 12 donuts por assadeira; Deixar os donuts no carrinho para desgelo por 1 hora.', image: '' },
+          { id: 2, title: 'Donuts em Desgelo', desc: 'Após o desgelo, borrifar água nas mãos e adicionar farinha de trigo sobre todo o donut, levá-los de volta à assadeira e pressioná-los levemente. Levar a assadeira de volta ao carrinho, colocar saco aberto cobrindo as assadeiras e fechar a porta.', image: '' },
+          { id: 3, title: 'Donuts em Fermentação', desc: 'Deixar os donuts fermentarem entre 2 horas e 30 min a 3 horas. Fazer um furo no centro de cada donut com auxílio de um cortador redondo, fazendo movimentos circulares no furo.', image: '' },
+          { id: 4, title: 'Donuts Prontos', desc: 'Fritadeira: Pré-aquecida a 150°C colocar 4 donuts por vez na fritadeira e virar o lado para que a fritura fique uniforme. Após virá-los, pressionar com auxílio do escorredor da fritadeira para que sejam mantidos imersos no óleo.', image: '' }
+        ],
+        formulation: [],
+        nutritional: { finalYield: '', portion: 50, measure: '5/6 unidade', kcal: 137, carbs: 23, totalSugars: 2, addedSugars: 1, proteins: 3, totalFats: 2, satFats: 1, transFats: 0, fiber: 1, sodium: 241 }
+      },
+      {
+        id: 'PFL-001',
+        code: 'PFL-001',
+        name: 'Pão Francês Leve',
+        category: 'Pães',
+        version: 1,
+        status: 'active',
+        updatedAt: '16/06/2026',
+        coverImage: 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?w=800&q=80',
+        general: { brand: 'IMAC', description: 'Pão francês com adição de farinha integral.' },
+        technical: { unitsPerPackage: 71, packageWeight: '5 kg', unitWeight: '70g', perTray: 20, ovens: [{ id: 1, name: 'Forno Lastro', temp: '200°C', time: '17 min', vapor: 'Sim' }, { id: 2, name: 'Forno Turbo', temp: '175°C', time: '17 min', vapor: 'Sim' }] },
+        ingredients: { text: 'Farinha de trigo enriquecida de ferro e ácido fólico, água, farinha de trigo integral, sal, fermento biológico, propionato de cálcio (conservante), reforçador de farinha (AC. Ascórbico/INS 300).', containsGluten: true, containsLactose: false, allergensText: 'DERIVADOS DE TRIGO E DE SOJA' },
+        conservation: { frozen: '-12°C ou mais frio', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
+        validity: { package: '60 dias', postBaking: 'Diário', postDefrost: 'Não recongelar' },
+        preparationSteps: [
+          { id: 1, title: 'Pão Congelado', desc: 'Após aplicar untaforma, colocar 20 pães por tela; Deixar os pães no carrinho para desgelo por 1 hora.', image: '' },
+          { id: 2, title: 'Pão em Desgelo', desc: 'Após o desgelo, borrifar água nos pães e mãos, modelar e ajustá-los. Levar a tela de volta ao carrinho, colocar saco aberto cobrindo as telas e fechar a porta do mesmo. Borrifar água nos pães a cada 1 hora.', image: '' },
+          { id: 3, title: 'Pão em Fermentação', desc: 'Deixar os pães fermentarem por 5 a 6 horas (dependendo da temperatura do local); Após esse período, borrifar água nos pães e fazer 1 corte horizontal em cada.', image: '' },
+          { id: 4, title: 'Pão Assado', desc: 'Assar em forno Lastro: 200°C/17min com vapor ligado; Turbo: 175°C/17min com vapor e turbo ligados.', image: '' }
+        ],
+        formulation: [],
+        nutritional: { finalYield: '', portion: 50, measure: '5/7 unidade', kcal: 127, carbs: 23, totalSugars: 0, addedSugars: 0, proteins: 3, totalFats: 2, satFats: 0, transFats: 0, fiber: 2, sodium: 235 }
+      },
+      {
+        id: 'PFM-001',
+        code: 'PFM-001',
+        name: 'Pão Francês Milho',
+        category: 'Pães Especiais',
+        version: 1,
+        status: 'active',
+        updatedAt: '16/06/2026',
+        coverImage: 'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?w=800&q=80',
+        general: { brand: 'IMAC', description: 'Pão francês com farinha e aroma de milho.' },
+        technical: { unitsPerPackage: 63, packageWeight: '5 kg', unitWeight: '79g', perTray: 15, ovens: [{ id: 1, name: 'Forno Lastro', temp: '190°C', time: '17 min', vapor: 'Sim' }, { id: 2, name: 'Forno Turbo', temp: '175°C', time: '17 min', vapor: 'Sim' }] },
+        ingredients: { text: 'Farinha de trigo enriquecida com ferro e ácido fólico, farinha de milho, água, sal, açúcar, fermento biológico, aroma de milho verde, propionato de cálcio (conservante), reforçador de farinha (AC. Ascórbico/INS 300), corantes: INS 110, amarelo TARTRAZINA (INS 102) e INS 150d.', containsGluten: true, containsLactose: false, allergensText: 'DERIVADOS DE TRIGO, CENTEIO E CEVADA. PODE CONTER SOJA E AVEIA' },
+        conservation: { frozen: '-12°C ou mais frio', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
+        validity: { package: '60 dias', postBaking: 'Diário', postDefrost: 'Não recongelar' },
+        preparationSteps: [
+          { id: 1, title: 'Pão Congelado', desc: 'Após aplicar untaforma, colocar 15 pães por tela; Deixar os pães no carrinho para desgelo por 1 hora.', image: '' },
+          { id: 2, title: 'Pão em Desgelo', desc: 'Após o desgelo, borrifar água nos pães e mãos, modelar e ajustá-los. Levar a tela de volta ao carrinho, colocar saco aberto cobrindo as telas e fechar a porta do mesmo. Borrifar água nos pães a cada 1 hora.', image: '' },
+          { id: 3, title: 'Pão em Fermentação', desc: 'Deixar os pães fermentarem por 5 a 6 horas. Após esse período, borrifar água nos pães e fazer 3 cortes longitudinais em cada.', image: '' },
+          { id: 4, title: 'Pão Assado', desc: 'Assar em forno Lastro: 190°C/17min com vapor ligado; Turbo: 175°C/17min com vapor e turbo ligados.', image: '' }
+        ],
+        formulation: [],
+        nutritional: { finalYield: '', portion: 50, measure: '5/8 unidade', kcal: 150, carbs: 25, totalSugars: 1, addedSugars: 1, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 216 }
+      },
+      {
+        id: 'HA-001',
+        code: 'HA-001',
+        name: 'Hambúrguer Amanteigado',
+        category: 'Pães Macios',
+        version: 1,
+        status: 'active',
+        updatedAt: '16/06/2026',
+        coverImage: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=800&q=80',
+        general: { brand: 'IMAC', description: 'Pão de hambúrguer macio sabor manteiga.' },
+        technical: { unitsPerPackage: 71, packageWeight: '5 kg', unitWeight: '70g', perTray: 24, ovens: [{ id: 1, name: 'Forno Lastro', temp: '180°C', time: '17 min', vapor: 'Não' }, { id: 2, name: 'Forno Turbo', temp: '165°C', time: '17 min', vapor: 'Não' }] },
+        ingredients: { text: 'Farinha de trigo enriquecida com ferro e ácido fólico, açúcar, sal, fermento biológico, margarina vegetal, aroma de batata, propionato de cálcio (conservante), reforçador de farinha (AC. Ascórbico/INS 300), corantes: INS 110, amarelo TARTRAZINA (INS 102) e INS 150d.', containsGluten: true, containsLactose: true, allergensText: 'DERIVADOS DE LEITE, TRIGO E SOJA. PODE CONTER OVO, AVEIA, CENTEIO, CEVADA E CASTANHA DE CAJÚ' },
+        conservation: { frozen: '-12°C ou mais frio', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
+        validity: { package: '60 dias', postBaking: 'Diário', postDefrost: 'Não recongelar' },
+        preparationSteps: [
+          { id: 1, title: 'Pão Congelado', desc: 'Após aplicar untaforma, colocar 24 pães por tela; Deixar os pães no carrinho para desgelo por 1 hora.', image: '' },
+          { id: 2, title: 'Pão em Desgelo', desc: 'Após o desgelo colocar saco aberto cobrindo as telas e fechar a porta do mesmo.', image: '' },
+          { id: 3, title: 'Pão em Fermentação', desc: 'Deixar os pães fermentarem por 6 horas (dependendo da temperatura do local).', image: '' },
+          { id: 4, title: 'Pão Assado', desc: 'Assar em forno Lastro: 180°C/17min sem vapor ligado; Turbo: 165°C/17min ligar o turbo após os 5 min iniciais. Ao sair do forno, pincelar margarina sobre os pães.', image: '' }
+        ],
+        formulation: [],
+        nutritional: { finalYield: '', portion: 50, measure: '5/7 unidade', kcal: 159, carbs: 26, totalSugars: 3, addedSugars: 0, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 209 }
+      },
+      {
+        id: 'PHD-001',
+        code: 'PHD-001',
+        name: 'Pão Hot Dog',
+        category: 'Pães Macios',
+        version: 1,
+        status: 'active',
+        updatedAt: '16/06/2026',
+        coverImage: 'https://images.unsplash.com/photo-1541280910158-c4e14f998874?w=800&q=80',
+        general: { brand: 'IMAC', description: 'Pão macio especial para cachorro quente.' },
+        technical: { unitsPerPackage: 71, packageWeight: '5 kg', unitWeight: '70g', perTray: 30, ovens: [{ id: 1, name: 'Forno Lastro', temp: '180°C', time: '17 min', vapor: 'Não' }, { id: 2, name: 'Forno Turbo', temp: '165°C', time: '17 min', vapor: 'Não' }] },
+        ingredients: { text: 'Farinha de trigo enriquecida com ferro e ácido fólico, água, açúcar, fermento biológico, sal, margarina vegetal, propionato de cálcio (conservante), reforçador de farinha (AC. Ascórbico/INS 300).', containsGluten: true, containsLactose: true, allergensText: 'DERIVADOS DE LEITE, TRIGO E SOJA. PODE CONTER OVO, AVEIA, CENTEIO, CEVADA E CASTANHA DE CAJÚ' },
+        conservation: { frozen: '-12°C ou mais frio', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
+        validity: { package: '60 dias', postBaking: 'Diário', postDefrost: 'Não recongelar' },
+        preparationSteps: [
+          { id: 1, title: 'Pão Congelado', desc: 'Após aplicar untaforma, colocar 30 pães por tela; Deixar os pães no carrinho para desgelo por 1 hora.', image: '' },
+          { id: 2, title: 'Pão em Desgelo', desc: 'Após o desgelo colocar saco aberto cobrindo as telas e fechar a porta do mesmo.', image: '' },
+          { id: 3, title: 'Pão em Fermentação', desc: 'Deixar os pães fermentarem por 6 horas (dependendo da temperatura do local).', image: '' },
+          { id: 4, title: 'Pão Assado', desc: 'Assar em forno Lastro: 180°C/17min sem vapor ligado; Turbo: 165°C/17min ligar o turbo após os 5 min iniciais. Ao sair do forno, pincelar margarina sobre os pães.', image: '' }
+        ],
+        formulation: [],
+        nutritional: { finalYield: '', portion: 50, measure: '5/7 unidade', kcal: 164, carbs: 27, totalSugars: 4, addedSugars: 0, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 218 }
+      },
+      {
+        id: 'PMB-001',
+        code: 'PMB-001',
+        name: 'Pão Mini Brioche',
+        category: 'Pães Especiais',
+        version: 1,
+        status: 'active',
+        updatedAt: '16/06/2026',
+        coverImage: 'https://images.unsplash.com/photo-1621236378699-8597faa6aa6f?w=800&q=80',
+        general: { brand: 'IMAC', description: 'Pão de brioche tamanho mini para lanches.' },
+        technical: { unitsPerPackage: 166, packageWeight: '5 kg', unitWeight: '30g', perTray: 24, ovens: [{ id: 1, name: 'Forno Lastro', temp: '180°C', time: '15 min', vapor: 'Não' }, { id: 2, name: 'Forno Turbo', temp: '165°C', time: '17 min', vapor: 'Não' }] },
+        ingredients: { text: 'Farinha de trigo enriquecida com ferro e ácido fólico, ovo, amido modificado, soro de leite em pó, gema de ovo em pó, sal, açúcar, farinha de trigo pré-gelatinizada, gordura hidrogenada, água, fermento biológico, proprionato de cálcio, reforçador de farinha (A.C ascórbico INS/300).', containsGluten: true, containsLactose: true, allergensText: 'LEITE E DERIVADOS, OVO, DERIVADOS DE TRIGO E SOJA' },
+        conservation: { frozen: '-12°C ou mais frio', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
+        validity: { package: '60 dias', postBaking: 'Diário', postDefrost: 'Não recongelar' },
+        preparationSteps: [
+          { id: 1, title: 'Pão Congelado', desc: 'Após aplicar untaforma, colocar 24 pães por tela; Deixar os pães no carrinho para desgelo por 1 hora.', image: '' },
+          { id: 2, title: 'Pão em Desgelo', desc: 'Após o desgelo colocar saco aberto cobrindo as telas e fechar a porta do mesmo.', image: '' },
+          { id: 3, title: 'Pão em Fermentação', desc: 'Deixar os pães fermentarem por 2 horas. Após esse período, pincelar gema diluída (50g gema + 50g água) sobre os pães (Obs.: se for levado à fritadeira, não pincelar gema diluída).', image: '' },
+          { id: 4, title: 'Pão Assado / Frito', desc: 'FORNO - Lastro: 180°C/15min sem vapor; Turbo: 165°C/17min com turbo. FRITURA - Pré-assamento (Lastro 180°C/8min ou Turbo 160°C/8min) em seguida fritadeira previamente aquecida a 150°C/5min até dourar (virar o lado).', image: '' }
+        ],
+        formulation: [],
+        nutritional: { finalYield: '', portion: 50, measure: '1 + 2/5 unidade', kcal: 196, carbs: 23, totalSugars: 4, addedSugars: 2, proteins: 5, totalFats: 6, satFats: 3, transFats: 0, fiber: 1, sodium: 174 }
       }
+    ];
+
+    const mockIngredients = [
+      { id: 'ING-1', name: 'Farinha de Trigo Especial', supplier: 'Moinho Rosa', referencePortion: 50, kcal: 173, carbs: 36, totalSugars: 0, addedSugars: 0, proteins: 5, totalFats: 0, satFats: 0, transFats: 0, fiber: 1.5, sodium: 0 },
+      { id: 'ING-2', name: 'Margarina Folhada 80% Lipídios', supplier: 'Marca Y', referencePortion: 10, kcal: 72, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 8, satFats: 4, transFats: 1.5, fiber: 0, sodium: 60 },
+      { id: 'ING-3', name: 'Fermento Biológico Seco', supplier: 'Marca Z', referencePortion: 10, kcal: 35, carbs: 3, totalSugars: 0, addedSugars: 0, proteins: 4, totalFats: 0.5, satFats: 0, transFats: 0, fiber: 2.5, sodium: 5 }
     ];
 
     const emptyFicha = {
@@ -135,7 +304,7 @@
       validity: { package: '', postBaking: '', postDefrost: '' },
       preparationSteps: [],
       formulation: [], 
-      nutritional: { finalYield: '', portion: 0, measure: '', kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 }
+      nutritional: { finalYield: '', portion: 0, measure: '', kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 }
     };
 
     // ============================================================================
@@ -146,6 +315,7 @@
       const [loadingAuth, setLoadingAuth] = useState(true);
       const [currentView, setCurrentView] = useState('dashboard');
       const [fichas, setFichas] = useState([]);
+      const [customIngredients, setCustomIngredients] = useState([]);
       const [selectedFicha, setSelectedFicha] = useState(null);
       const [sidebarOpen, setSidebarOpen] = useState(true);
       const [isFallbackMode, setIsFallbackMode] = useState(false);
@@ -165,7 +335,6 @@
             await signInAnonymously(auth);
           } catch (err) {
             console.error("Erro de Autenticação:", err);
-            alert("Erro na Autenticação Anônima. Verifique se o login Anônimo está ativado no seu Firebase Authentication.");
             setLoadingAuth(false);
           }
         };
@@ -190,25 +359,35 @@
         
         if (isFallbackMode) {
             setFichas(mockFichas);
+            setCustomIngredients(mockIngredients);
             return;
         }
 
         const colRef = collection(db, 'fichas');
-        const unsub = onSnapshot(colRef, (snap) => {
+        const unsubFichas = onSnapshot(colRef, (snap) => {
           if (!snap.empty) {
             setFichas(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
           } else {
             setFichas([]);
           }
         }, (err) => {
-           console.error("Erro Firestore:", err);
+           console.error("Erro Firestore Fichas:", err);
            if (err.message && err.message.includes('Missing or insufficient permissions')) {
-               alert("⚠️ ALERTA DE PERMISSÃO DO FIREBASE!\n\nSeu banco de dados Firestore está bloqueado. Altere as regras para allow read, write: if true;");
+               alert("⚠️ ALERTA DE PERMISSÃO DO FIREBASE!\n\nSeu banco de dados Firestore está bloqueado. O sistema usará dados locais.");
                setIsFallbackMode(true);
            }
         });
+
+        const ingRef = collection(db, 'ingredients');
+        const unsubIng = onSnapshot(ingRef, (snap) => {
+          if (!snap.empty) {
+            setCustomIngredients(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          } else {
+            setCustomIngredients([]);
+          }
+        }, (err) => console.error("Erro Firestore Ingredientes:", err));
         
-        return () => unsub && unsub();
+        return () => { unsubFichas && unsubFichas(); unsubIng && unsubIng(); }
       }, [user, isFallbackMode]);
 
       const handleSaveFicha = async (fichaData) => {
@@ -227,7 +406,7 @@
           setCurrentView('list');
         } catch (error) {
           console.error(error);
-          alert("Erro ao salvar no banco: " + error.message);
+          alert("Erro ao salvar ficha: " + error.message);
         }
       };
 
@@ -241,6 +420,36 @@
             await deleteDoc(doc(db, 'fichas', id));
           } catch (error) {
             alert("Erro ao excluir: " + error.message);
+          }
+        }
+      };
+
+      const handleSaveIngredient = async (ingData) => {
+        const isNew = !ingData.id;
+        const saveId = isNew ? `ING-${Date.now()}` : ingData.id;
+        const payload = { ...ingData, id: saveId, updatedAt: new Date().toLocaleDateString('pt-BR') };
+        
+        if (isFallbackMode) {
+          setCustomIngredients(prev => isNew ? [payload, ...prev] : prev.map(i => i.id === saveId ? payload : i));
+          return;
+        }
+        try {
+          await setDoc(doc(db, 'ingredients', saveId), payload);
+        } catch (error) {
+          alert("Erro ao salvar ingrediente: " + error.message);
+        }
+      };
+
+      const handleDeleteIngredient = async (id) => {
+        if (confirm("Tem certeza que deseja excluir este Ingrediente?")) {
+          if (isFallbackMode) {
+            setCustomIngredients(prev => prev.filter(i => i.id !== id));
+            return;
+          }
+          try {
+            await deleteDoc(doc(db, 'ingredients', id));
+          } catch (error) {
+            alert("Erro ao excluir ingrediente: " + error.message);
           }
         }
       };
@@ -271,6 +480,7 @@
             <nav className="flex-1 py-6 space-y-2 px-3 overflow-y-auto">
               <NavItem icon={<LayoutDashboard size={20}/>} label="Dashboard" active={currentView === 'dashboard'} onClick={() => setCurrentView('dashboard')} open={sidebarOpen} />
               <NavItem icon={<FileText size={20}/>} label="Fichas Técnicas" active={currentView === 'list'} onClick={() => setCurrentView('list')} open={sidebarOpen} />
+              <NavItem icon={<Package size={20}/>} label="Meus Ingredientes" active={currentView === 'ingredients'} onClick={() => setCurrentView('ingredients')} open={sidebarOpen} />
               <NavItem icon={<Users size={20}/>} label="Utilizadores" active={currentView === 'users'} onClick={() => setCurrentView('users')} open={sidebarOpen} />
               <NavItem icon={<Settings size={20}/>} label="Configurações" active={currentView === 'settings'} onClick={() => setCurrentView('settings')} open={sidebarOpen} />
             </nav>
@@ -285,6 +495,7 @@
               <h1 className="text-2xl font-bold text-[#5c3a21] flex items-center">
                 {currentView === 'dashboard' && 'Dashboard de Qualidade'}
                 {currentView === 'list' && 'Gerenciamento de Fichas Técnicas'}
+                {currentView === 'ingredients' && 'Banco de Ingredientes Próprio'}
                 {currentView === 'users' && 'Controle de Utilizadores'}
                 {currentView === 'settings' && 'Configurações do Sistema'}
                 {currentView === 'form' && (selectedFicha?.id ? `Editar Ficha: ${selectedFicha.name}` : 'Nova Ficha Técnica')}
@@ -301,9 +512,10 @@
             </header>
 
             <div className="flex-1 overflow-auto bg-gray-50 p-6 h-[calc(100vh-80px)] relative">
-              {currentView === 'dashboard' && <DashboardView fichas={fichas} onNavigate={setCurrentView} />}
+              {currentView === 'dashboard' && <DashboardView fichas={fichas} customIngredients={customIngredients} onNavigate={setCurrentView} />}
               {currentView === 'list' && <ListView fichas={fichas} onEdit={(f) => { setSelectedFicha(f); setCurrentView('form'); }} onPdf={(f) => { setSelectedFicha(f); setCurrentView('pdf'); }} onNew={() => { setSelectedFicha(emptyFicha); setCurrentView('form'); }} onDelete={handleDelete} />}
-              {currentView === 'form' && <FormView ficha={selectedFicha} onBack={() => setCurrentView('list')} onSave={handleSaveFicha} />}
+              {currentView === 'ingredients' && <IngredientsView ingredients={customIngredients} onSave={handleSaveIngredient} onDelete={handleDeleteIngredient} />}
+              {currentView === 'form' && <FormView ficha={selectedFicha} customIngredients={customIngredients} onBack={() => setCurrentView('list')} onSave={handleSaveFicha} />}
               {currentView === 'pdf' && <PDFView ficha={selectedFicha} onBack={() => setCurrentView('list')} companySettings={companySettings} />}
               {currentView === 'users' && <UsersView />}
               {currentView === 'settings' && <SettingsView companySettings={companySettings} setCompanySettings={setCompanySettings} />}
@@ -333,15 +545,15 @@
       </div>
     );
 
-    const DashboardView = ({ fichas, onNavigate }) => {
+    const DashboardView = ({ fichas, customIngredients, onNavigate }) => {
       const ativos = fichas.filter(f => f.status === 'active').length;
       return (
         <div className="space-y-6 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <StatCard title="Total Cadastradas" value={fichas.length} icon={<FileText size={24} className="text-[#5c3a21]" />} color="bg-white border-gray-200" />
             <StatCard title="Produtos Ativos" value={ativos} icon={<CheckCircle size={24} className="text-green-600" />} color="bg-white border-l-4 border-l-green-500" />
+            <StatCard title="Ingredientes" value={customIngredients.length} icon={<Package size={24} className="text-blue-500" />} color="bg-white border-l-4 border-l-blue-400" />
             <StatCard title="Rascunhos" value={fichas.length - ativos} icon={<Edit size={24} className="text-gray-500" />} color="bg-white border-l-4 border-l-gray-400" />
-            <StatCard title="Total no Banco" value={fichas.length} icon={<Database size={24} className="text-[#F4B400]" />} color="bg-white border-l-4 border-l-[#F4B400]" />
           </div>
         </div>
       );
@@ -393,6 +605,112 @@
       );
     };
 
+    const IngredientsView = ({ ingredients, onSave, onDelete }) => {
+      const [search, setSearch] = useState('');
+      const [isModalOpen, setIsModalOpen] = useState(false);
+      const [editingIng, setEditingIng] = useState(null);
+
+      const emptyIng = { name: '', supplier: '', referencePortion: 100, kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 };
+
+      const filtered = ingredients.filter(i => i.name.toLowerCase().includes(search.toLowerCase()) || (i.supplier && i.supplier.toLowerCase().includes(search.toLowerCase())));
+
+      const openModal = (ing = emptyIng) => {
+        setEditingIng({ ...ing });
+        setIsModalOpen(true);
+      };
+
+      const handleSave = () => {
+        if (!editingIng.name || editingIng.referencePortion <= 0) {
+          alert("O nome é obrigatório e a porção deve ser maior que 0.");
+          return;
+        }
+        onSave(editingIng);
+        setIsModalOpen(false);
+      };
+
+      return (
+        <div className="space-y-6 max-w-7xl mx-auto h-full flex flex-col pb-10">
+          
+          {isModalOpen && (
+            <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90%] flex flex-col overflow-hidden">
+                <div className="bg-[#5c3a21] text-white p-4 flex justify-between items-center">
+                  <h3 className="font-bold flex items-center"><Package size={18} className="mr-2"/> {editingIng.id ? 'Editar Ingrediente' : 'Novo Ingrediente (Rótulo)'}</h3>
+                  <button onClick={() => setIsModalOpen(false)} className="hover:text-[#F4B400]"><X size={20}/></button>
+                </div>
+                <div className="p-4 bg-yellow-50 border-b border-yellow-200 text-sm text-[#5c3a21]">
+                  <p>Cadastre os dados nutricionais exatamente como constam na <strong>tabela da embalagem do seu fornecedor</strong>.</p>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
+                  <div className="grid grid-cols-2 gap-4">
+                    <InputGroup label="Nome do Ingrediente" value={editingIng.name} onChange={v => setEditingIng({...editingIng, name: v})} placeholder="Ex: Farinha de Trigo Especial" />
+                    <InputGroup label="Fornecedor / Marca" value={editingIng.supplier} onChange={v => setEditingIng({...editingIng, supplier: v})} placeholder="Ex: Moinho X" />
+                  </div>
+                  
+                  <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
+                     <h4 className="font-bold text-[#5c3a21] border-b border-gray-200 pb-2 mb-4">Valores Nutricionais da Embalagem</h4>
+                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <InputGroup type="number" label="Porção na Embalagem (g)" value={editingIng.referencePortion} onChange={v => setEditingIng({...editingIng, referencePortion: v})} placeholder="Ex: 50" />
+                        <InputGroup type="number" label="Valor Energético (Kcal)" value={editingIng.kcal} onChange={v => setEditingIng({...editingIng, kcal: v})} />
+                        <InputGroup type="number" label="Carboidratos (g)" value={editingIng.carbs} onChange={v => setEditingIng({...editingIng, carbs: v})} />
+                        <InputGroup type="number" label="Açúcares Totais (g)" value={editingIng.totalSugars} onChange={v => setEditingIng({...editingIng, totalSugars: v})} />
+                        <InputGroup type="number" label="Açúcares Adicion. (g)" value={editingIng.addedSugars} onChange={v => setEditingIng({...editingIng, addedSugars: v})} />
+                        <InputGroup type="number" label="Proteínas (g)" value={editingIng.proteins} onChange={v => setEditingIng({...editingIng, proteins: v})} />
+                        <InputGroup type="number" label="Gorduras Totais (g)" value={editingIng.totalFats} onChange={v => setEditingIng({...editingIng, totalFats: v})} />
+                        <InputGroup type="number" label="Gorduras Saturadas (g)" value={editingIng.satFats} onChange={v => setEditingIng({...editingIng, satFats: v})} />
+                        <InputGroup type="number" label="Gorduras Trans (g)" value={editingIng.transFats} onChange={v => setEditingIng({...editingIng, transFats: v})} />
+                        <InputGroup type="number" label="Fibra Alimentar (g)" value={editingIng.fiber} onChange={v => setEditingIng({...editingIng, fiber: v})} />
+                        <InputGroup type="number" label="Sódio (mg)" value={editingIng.sodium} onChange={v => setEditingIng({...editingIng, sodium: v})} />
+                     </div>
+                  </div>
+                </div>
+                <div className="p-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
+                   <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded">Cancelar</button>
+                   <button onClick={handleSave} className="bg-[#5c3a21] text-white px-6 py-2 rounded shadow font-bold hover:bg-[#4a2e1a]">Salvar Ingrediente</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+            <div className="relative w-72">
+              <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+              <input type="text" placeholder="Buscar ingrediente..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F4B400] outline-none text-sm" />
+            </div>
+            <button onClick={() => openModal()} className="bg-[#F4B400] hover:bg-[#d9a000] text-[#5c3a21] font-bold px-5 py-2 rounded-lg shadow flex items-center space-x-2">
+              <Plus size={18} /> <span>Novo Ingrediente</span>
+            </button>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex-1 overflow-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-[#5c3a21] text-white uppercase font-bold text-xs sticky top-0 z-10">
+                <tr>
+                  <th className="px-6 py-4">Ingrediente</th>
+                  <th className="px-6 py-4">Fornecedor</th>
+                  <th className="px-6 py-4">Porção Ref.</th>
+                  <th className="px-6 py-4 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? <tr><td colSpan="4" className="text-center py-10 text-gray-500">Nenhum ingrediente cadastrado.</td></tr> : filtered.map(ing => (
+                  <tr key={ing.id} className="border-b border-gray-100 hover:bg-[#fffdf5]">
+                    <td className="px-6 py-4 font-bold text-[#5c3a21]">{ing.name}</td>
+                    <td className="px-6 py-4 text-gray-600">{ing.supplier || '-'}</td>
+                    <td className="px-6 py-4 text-gray-600">{ing.referencePortion}g</td>
+                    <td className="px-6 py-4 text-right space-x-1">
+                      <button onClick={() => openModal(ing)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"><Edit size={18} /></button>
+                      <button onClick={() => onDelete(ing.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 size={18} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    };
+
     const SettingsView = ({ companySettings, setCompanySettings }) => {
       const handleLogoUpload = (e) => {
         const file = e.target.files[0];
@@ -429,18 +747,118 @@
       </div>
     );
 
-    const FormView = ({ ficha, onBack, onSave }) => {
+    const ImageEditorModal = ({ src, onSave, onCancel }) => {
+      const canvasRef = React.useRef(null);
+      const [scale, setScale] = useState(1);
+      const [offsetX, setOffsetX] = useState(0);
+      const [offsetY, setOffsetY] = useState(0);
+      const [brightness, setBrightness] = useState(100);
+      const [contrast, setContrast] = useState(100);
+
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.crossOrigin = "anonymous"; // Permite editar imagens de URLs externas sem travar o Canvas (CORS)
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
+          
+          const canvasRatio = canvas.width / canvas.height;
+          const imgRatio = img.width / img.height;
+          let drawWidth, drawHeight;
+
+          // Cobre todo o canvas (Object-fit: cover)
+          if (imgRatio > canvasRatio) {
+              drawHeight = canvas.height;
+              drawWidth = img.width * (canvas.height / img.height);
+          } else {
+              drawWidth = canvas.width;
+              drawHeight = img.height * (canvas.width / img.width);
+          }
+
+          drawWidth *= scale;
+          drawHeight *= scale;
+
+          const dx = (canvas.width - drawWidth) / 2 + Number(offsetX);
+          const dy = (canvas.height - drawHeight) / 2 + Number(offsetY);
+
+          ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
+        };
+        img.src = src;
+      }, [src, scale, offsetX, offsetY, brightness, contrast]);
+
+      const handleConfirm = () => {
+        try {
+          // Gera JPEG otimizado padronizado
+          const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.85);
+          onSave(dataUrl);
+        } catch (error) {
+          alert("Erro de Segurança (CORS): Esta imagem de link externo não permite edição nativa pelo navegador. Por favor, faça o upload direto do seu computador para editá-la.");
+        }
+      };
+
+      return (
+        <div className="absolute inset-0 bg-black/80 z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden">
+            <div className="bg-[#5c3a21] text-white p-4 flex justify-between items-center">
+              <h3 className="font-bold flex items-center"><ImageIcon className="mr-2" size={18}/> Ajustar Imagem (Padronização)</h3>
+              <button onClick={onCancel} className="hover:text-[#F4B400]"><X size={20}/></button>
+            </div>
+            <div className="flex flex-col md:flex-row p-4 gap-6 bg-gray-50 h-[60vh] md:h-auto overflow-y-auto">
+              <div className="flex-1 flex flex-col items-center justify-center border border-dashed border-gray-400 bg-gray-200 rounded p-4">
+                 <canvas ref={canvasRef} width={800} height={600} className="w-full max-w-full h-auto shadow-md" style={{ maxWidth: '600px', aspectRatio: '4/3' }}></canvas>
+                 <p className="text-[11px] font-bold text-gray-500 mt-3 text-center uppercase tracking-wide">Saída Padronizada: 800x600 px (Alta Qualidade)</p>
+              </div>
+              <div className="w-full md:w-72 space-y-4 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                <h4 className="font-bold text-[#5c3a21] border-b pb-2 text-sm flex items-center"><Settings size={16} className="mr-2"/> Controles</h4>
+                <div className="space-y-1">
+                   <label className="text-xs font-bold text-gray-600 flex justify-between"><span>Zoom</span> <span>{scale}x</span></label>
+                   <input type="range" min="1" max="4" step="0.1" value={scale} onChange={e => setScale(e.target.value)} className="w-full accent-[#F4B400]" />
+                </div>
+                <div className="space-y-1">
+                   <label className="text-xs font-bold text-gray-600">Posição Horizontal</label>
+                   <input type="range" min="-1000" max="1000" step="10" value={offsetX} onChange={e => setOffsetX(e.target.value)} className="w-full accent-[#F4B400]" />
+                </div>
+                <div className="space-y-1">
+                   <label className="text-xs font-bold text-gray-600">Posição Vertical</label>
+                   <input type="range" min="-1000" max="1000" step="10" value={offsetY} onChange={e => setOffsetY(e.target.value)} className="w-full accent-[#F4B400]" />
+                </div>
+                <div className="space-y-1">
+                   <label className="text-xs font-bold text-gray-600 flex justify-between"><span>Brilho</span> <span>{brightness}%</span></label>
+                   <input type="range" min="30" max="200" step="5" value={brightness} onChange={e => setBrightness(e.target.value)} className="w-full accent-[#F4B400]" />
+                </div>
+                <div className="space-y-1">
+                   <label className="text-xs font-bold text-gray-600 flex justify-between"><span>Contraste</span> <span>{contrast}%</span></label>
+                   <input type="range" min="30" max="200" step="5" value={contrast} onChange={e => setContrast(e.target.value)} className="w-full accent-[#F4B400]" />
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-gray-200 flex justify-end gap-3 bg-white">
+              <button onClick={onCancel} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 border border-gray-300 rounded text-sm">Cancelar</button>
+              <button onClick={handleConfirm} className="bg-[#5c3a21] text-white px-6 py-2 rounded shadow font-bold hover:bg-[#4a2e1a] text-sm flex items-center"><Save size={16} className="mr-2"/> Aplicar e Padronizar</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const FormView = ({ ficha, customIngredients, onBack, onSave }) => {
       const [activeTab, setActiveTab] = useState(1);
       const [formData, setFormData] = useState({ formulation: [], ...JSON.parse(JSON.stringify(ficha)) });
-      const [tacoModalOpen, setTacoModalOpen] = useState(false);
-      const [tacoSearchTerm, setTacoSearchTerm] = useState('');
       
+      const [ingSearchModalOpen, setIngSearchModalOpen] = useState(false);
+      const [ingSearchTerm, setIngSearchTerm] = useState('');
+
       const [customIngModalOpen, setCustomIngModalOpen] = useState(false);
       const [customIngData, setCustomIngData] = useState({
-        name: '', referencePortion: 100, kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0
+        name: '', referencePortion: 100, kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0
       });
 
       const [showConfirmModal, setShowConfirmModal] = useState(false);
+      
+      // Estado controlador do Editor de Imagens
+      const [editorState, setEditorState] = useState({ isOpen: false, src: null, type: null, stepId: null });
 
       const tabs = [{ id: 1, label: 'Gerais' }, { id: 2, label: 'Técnicos' }, { id: 3, label: 'Ingredientes' }, { id: 4, label: 'Conservação/Validade' }, { id: 6, label: 'Preparo' }, { id: 7, label: 'Nutricional' }];
 
@@ -453,7 +871,7 @@
         const file = e.target.files[0];
         if (file) {
           const r = new FileReader();
-          r.onloadend = () => updatePrepStep(id, 'image', r.result);
+          r.onloadend = () => setEditorState({ isOpen: true, src: r.result, type: 'step', stepId: id });
           r.readAsDataURL(file);
         }
       };
@@ -462,9 +880,22 @@
         const file = e.target.files[0];
         if (file) {
           const r = new FileReader();
-          r.onloadend = () => setFormData({ ...formData, coverImage: r.result });
+          r.onloadend = () => setEditorState({ isOpen: true, src: r.result, type: 'cover', stepId: null });
           r.readAsDataURL(file);
         }
+      };
+
+      const handleEditExistingImage = (type, src, stepId = null) => {
+        setEditorState({ isOpen: true, src: src, type: type, stepId: stepId });
+      };
+
+      const handleEditorSave = (editedDataUrl) => {
+        if (editorState.type === 'cover') {
+           setFormData({ ...formData, coverImage: editedDataUrl });
+        } else if (editorState.type === 'step') {
+           updatePrepStep(editorState.stepId, 'image', editedDataUrl);
+        }
+        setEditorState({ isOpen: false, src: null, type: null, stepId: null });
       };
 
       const addOven = () => {
@@ -482,47 +913,32 @@
         updateNested('technical', 'ovens', newOvens);
       };
 
-      const filteredTaco = mockTACO.filter(item => item.name.toLowerCase().includes(tacoSearchTerm.toLowerCase()));
-      
-      const applyTacoItemToFormulation = (item) => {
-        const newFormulation = [...(formData.formulation || []), {
-            id: Date.now(),
-            tacoId: item.id,
-            name: item.name,
-            qty: 0,
-            base: { kcal: item.kcal, carbs: item.carbs, proteins: item.proteins, totalFats: item.totalFats, satFats: item.satFats, transFats: item.transFats, fiber: item.fiber, sodium: item.sodium }
-        }];
-        recalcFormulation(newFormulation, formData.nutritional.finalYield, formData.nutritional.portion);
-        setTacoModalOpen(false);
-        setTacoSearchTerm('');
-      };
+      const filteredIngredients = customIngredients.filter(item => item.name.toLowerCase().includes(ingSearchTerm.toLowerCase()));
 
-      const addCustomIngredientToFormulation = () => {
-         if(!customIngData.name || customIngData.referencePortion <= 0) {
-             alert("Preencha o nome e certifique-se de que a porção da embalagem seja maior que 0.");
-             return;
-         }
-         const factor = 100 / parseFloat(customIngData.referencePortion);
+      const addIngredientToFormulation = (item) => {
+         const factor = 100 / parseFloat(item.referencePortion || 100);
          const newItem = {
              id: Date.now(),
-             tacoId: 'custom-' + Date.now(),
-             name: customIngData.name + ' (Manual)',
+             ingId: item.id,
+             name: item.name,
              qty: 0,
              base: {
-                 kcal: parseFloat(customIngData.kcal || 0) * factor,
-                 carbs: parseFloat(customIngData.carbs || 0) * factor,
-                 proteins: parseFloat(customIngData.proteins || 0) * factor,
-                 totalFats: parseFloat(customIngData.totalFats || 0) * factor,
-                 satFats: parseFloat(customIngData.satFats || 0) * factor,
-                 transFats: parseFloat(customIngData.transFats || 0) * factor,
-                 fiber: parseFloat(customIngData.fiber || 0) * factor,
-                 sodium: parseFloat(customIngData.sodium || 0) * factor
+                 kcal: parseFloat(item.kcal || 0) * factor,
+                 carbs: parseFloat(item.carbs || 0) * factor,
+                 totalSugars: parseFloat(item.totalSugars || 0) * factor,
+                 addedSugars: parseFloat(item.addedSugars || 0) * factor,
+                 proteins: parseFloat(item.proteins || 0) * factor,
+                 totalFats: parseFloat(item.totalFats || 0) * factor,
+                 satFats: parseFloat(item.satFats || 0) * factor,
+                 transFats: parseFloat(item.transFats || 0) * factor,
+                 fiber: parseFloat(item.fiber || 0) * factor,
+                 sodium: parseFloat(item.sodium || 0) * factor
              }
          };
          const newFormulation = [...(formData.formulation || []), newItem];
          recalcFormulation(newFormulation, formData.nutritional.finalYield, formData.nutritional.portion);
-         setCustomIngModalOpen(false);
-         setCustomIngData({ name: '', referencePortion: 100, kcal: 0, carbs: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 });
+         setIngSearchModalOpen(false);
+         setIngSearchTerm('');
       };
 
       const handleFormulationChange = (index, value) => {
@@ -550,6 +966,8 @@
            const itemFactor = Number(item.qty || 0) / 100;
            acc.kcal += (item.base.kcal || 0) * itemFactor;
            acc.carbs += (item.base.carbs || 0) * itemFactor;
+           acc.totalSugars += (item.base.totalSugars || 0) * itemFactor;
+           acc.addedSugars += (item.base.addedSugars || 0) * itemFactor;
            acc.proteins += (item.base.proteins || 0) * itemFactor;
            acc.totalFats += (item.base.totalFats || 0) * itemFactor;
            acc.satFats += (item.base.satFats || 0) * itemFactor;
@@ -557,7 +975,7 @@
            acc.fiber += (item.base.fiber || 0) * itemFactor;
            acc.sodium += (item.base.sodium || 0) * itemFactor;
            return acc;
-        }, { kcal:0, carbs:0, proteins:0, totalFats:0, satFats:0, transFats:0, fiber:0, sodium:0 });
+        }, { kcal:0, carbs:0, totalSugars:0, addedSugars:0, proteins:0, totalFats:0, satFats:0, transFats:0, fiber:0, sodium:0 });
 
         setFormData(prev => ({
            ...prev,
@@ -568,6 +986,8 @@
               portion: portionVal,
               kcal: (totals.kcal * factor).toFixed(1),
               carbs: (totals.carbs * factor).toFixed(1),
+              totalSugars: (totals.totalSugars * factor).toFixed(1),
+              addedSugars: (totals.addedSugars * factor).toFixed(1),
               proteins: (totals.proteins * factor).toFixed(1),
               totalFats: (totals.totalFats * factor).toFixed(1),
               satFats: (totals.satFats * factor).toFixed(1),
@@ -581,6 +1001,10 @@
       return (
         <div className="max-w-6xl mx-auto bg-white rounded-xl shadow border border-gray-200 flex flex-col h-full relative">
           
+          {editorState.isOpen && (
+             <ImageEditorModal src={editorState.src} onSave={handleEditorSave} onCancel={() => setEditorState({ isOpen: false, src: null, type: null, stepId: null })} />
+          )}
+
           {showConfirmModal && (
             <div className="absolute inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
               <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
@@ -597,57 +1021,33 @@
             </div>
           )}
 
-          {tacoModalOpen && (
+          {ingSearchModalOpen && (
             <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80%] flex flex-col overflow-hidden">
                 <div className="bg-[#5c3a21] text-white p-4 flex justify-between items-center">
-                  <h3 className="font-bold flex items-center"><Database className="mr-2" size={18}/> Banco de Dados TACO</h3>
-                  <button onClick={() => setTacoModalOpen(false)} className="hover:text-[#F4B400]"><X size={20}/></button>
+                  <h3 className="font-bold flex items-center"><Package className="mr-2" size={18}/> Buscar Ingrediente Próprio</h3>
+                  <button onClick={() => setIngSearchModalOpen(false)} className="hover:text-[#F4B400]"><X size={20}/></button>
                 </div>
-                <div className="p-4 border-b border-gray-200">
-                  <input type="text" placeholder="Pesquisar ingrediente..." value={tacoSearchTerm} onChange={(e) => setTacoSearchTerm(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#F4B400] outline-none" />
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50">
-                  {filteredTaco.map(item => (
-                    <div key={item.id} className="bg-white p-3 rounded border border-gray-200 flex justify-between items-center shadow-sm">
-                      <div><h4 className="font-bold text-[#5c3a21] text-sm">{item.name}</h4></div>
-                      <button onClick={() => applyTacoItemToFormulation(item)} className="bg-[#F4B400] text-[#5c3a21] px-3 py-1.5 rounded text-xs font-bold">Adicionar</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {customIngModalOpen && (
-            <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90%] flex flex-col overflow-hidden">
-                <div className="bg-[#5c3a21] text-white p-4 flex justify-between items-center">
-                  <h3 className="font-bold flex items-center"><Edit size={18} className="mr-2"/> Ingrediente Manual (Rótulo)</h3>
-                  <button onClick={() => setCustomIngModalOpen(false)} className="hover:text-[#F4B400]"><X size={20}/></button>
-                </div>
-                <div className="p-4 bg-yellow-50 border-b border-yellow-200 text-sm text-[#5c3a21]">
-                  <p>Insira os dados nutricionais exatamente como constam na <strong>tabela da embalagem</strong> do ingrediente.</p>
-                </div>
-                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                      <InputGroup label="Nome do Ingrediente" value={customIngData.name} onChange={v => setCustomIngData({...customIngData, name: v})} placeholder="Ex: Farinha Especial Marca X" />
-                    </div>
-                    <InputGroup type="number" label="Porção na Embalagem (g)" value={customIngData.referencePortion} onChange={v => setCustomIngData({...customIngData, referencePortion: v})} placeholder="Ex: 50" />
-                    <InputGroup type="number" label="Valor Energético (Kcal)" value={customIngData.kcal} onChange={v => setCustomIngData({...customIngData, kcal: v})} />
-                    <InputGroup type="number" label="Carboidratos (g)" value={customIngData.carbs} onChange={v => setCustomIngData({...customIngData, carbs: v})} />
-                    <InputGroup type="number" label="Proteínas (g)" value={customIngData.proteins} onChange={v => setCustomIngData({...customIngData, proteins: v})} />
-                    <InputGroup type="number" label="Gorduras Totais (g)" value={customIngData.totalFats} onChange={v => setCustomIngData({...customIngData, totalFats: v})} />
-                    <InputGroup type="number" label="Gorduras Saturadas (g)" value={customIngData.satFats} onChange={v => setCustomIngData({...customIngData, satFats: v})} />
-                    <InputGroup type="number" label="Gorduras Trans (g)" value={customIngData.transFats} onChange={v => setCustomIngData({...customIngData, transFats: v})} />
-                    <InputGroup type="number" label="Fibra Alimentar (g)" value={customIngData.fiber} onChange={v => setCustomIngData({...customIngData, fiber: v})} />
-                    <InputGroup type="number" label="Sódio (mg)" value={customIngData.sodium} onChange={v => setCustomIngData({...customIngData, sodium: v})} />
+                <div className="p-4 border-b border-gray-200 bg-gray-50">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                    <input type="text" placeholder="Pesquisar por nome..." value={ingSearchTerm} onChange={(e) => setIngSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#F4B400] outline-none shadow-sm" />
                   </div>
                 </div>
-                <div className="p-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
-                   <button onClick={() => setCustomIngModalOpen(false)} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded">Cancelar</button>
-                   <button onClick={addCustomIngredientToFormulation} className="bg-[#5c3a21] text-white px-6 py-2 rounded shadow font-bold hover:bg-[#4a2e1a]">Adicionar à Receita</button>
+                <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50">
+                  {filteredIngredients.length === 0 ? (
+                    <div className="text-center py-10 text-gray-500">Nenhum ingrediente encontrado.<br/><span className="text-xs">Cadastre novos ingredientes na aba "Meus Ingredientes".</span></div>
+                  ) : (
+                    filteredIngredients.map(item => (
+                      <div key={item.id} className="bg-white p-3 rounded border border-gray-200 flex justify-between items-center shadow-sm">
+                        <div>
+                          <h4 className="font-bold text-[#5c3a21] text-sm">{item.name}</h4>
+                          {item.supplier && <p className="text-xs text-gray-500">{item.supplier}</p>}
+                        </div>
+                        <button onClick={() => addIngredientToFormulation(item)} className="bg-[#F4B400] hover:bg-[#d9a000] text-[#5c3a21] px-4 py-2 rounded text-xs font-bold shadow-sm transition">Selecionar</button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -701,8 +1101,9 @@
                     {formData.coverImage ? (
                       <>
                         <img src={formData.coverImage} className="absolute inset-0 w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                          <button className="bg-white text-[#5c3a21] px-3 py-1 rounded text-xs font-bold shadow hover:bg-gray-100" onClick={() => setFormData({...formData, coverImage: ''})}>Remover Foto</button>
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 rounded-lg">
+                          <button className="bg-[#F4B400] text-[#5c3a21] px-4 py-2 rounded text-xs font-bold shadow hover:bg-[#d9a000] flex items-center" onClick={() => handleEditExistingImage('cover', formData.coverImage)}><Edit size={16} className="mr-2"/> Editar Foto</button>
+                          <button className="bg-white text-red-600 px-4 py-2 rounded text-xs font-bold shadow hover:bg-gray-100 flex items-center" onClick={() => setFormData({...formData, coverImage: ''})}><Trash2 size={16} className="mr-2"/> Remover Foto</button>
                         </div>
                       </>
                     ) : (
@@ -783,10 +1184,14 @@
                         {step.image ? (
                           <>
                             <img src={step.image} className="w-full h-full object-cover"/>
-                            <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer text-white transition-opacity">
-                              <Upload size={16}/>
-                              <input type="file" className="hidden" onChange={(e) => handleImageUpload(step.id, e)}/>
-                            </label>
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity">
+                              <button onClick={() => handleEditExistingImage('step', step.image, step.id)} title="Editar Foto" className="bg-[#F4B400] text-[#5c3a21] p-1.5 rounded shadow hover:bg-[#d9a000]"><Edit size={14}/></button>
+                              <label title="Trocar Foto" className="cursor-pointer bg-white text-gray-700 p-1.5 rounded shadow hover:bg-gray-100">
+                                <Upload size={14}/>
+                                <input type="file" className="hidden" onChange={(e) => handleImageUpload(step.id, e)}/>
+                              </label>
+                              <button onClick={() => updatePrepStep(step.id, 'image', '')} title="Remover Foto" className="bg-white text-red-600 p-1.5 rounded shadow hover:bg-gray-100"><Trash2 size={14}/></button>
+                            </div>
                           </>
                         ) : (
                           <label className="cursor-pointer text-[10px] uppercase font-bold text-gray-400 hover:text-[#F4B400] text-center w-full h-full flex flex-col items-center justify-center">
@@ -813,14 +1218,13 @@
                    <div className="flex justify-between items-center border-b border-yellow-200 pb-3 mb-4">
                        <h4 className="font-bold text-[#5c3a21] flex items-center"><Calculator className="mr-2" size={18}/> Calculadora de Receita / Formulação</h4>
                        <div className="flex gap-2">
-                          <button onClick={() => setCustomIngModalOpen(true)} className="bg-white text-[#5c3a21] border border-[#F4B400] px-3 py-1.5 rounded text-xs font-bold uppercase shadow-sm hover:bg-yellow-50">+ Ingrediente Manual</button>
-                          <button onClick={() => setTacoModalOpen(true)} className="bg-[#F4B400] text-[#5c3a21] px-3 py-1.5 rounded text-xs font-bold uppercase shadow-sm hover:bg-[#d9a000]">+ Banco TACO</button>
+                          <button onClick={() => setIngSearchModalOpen(true)} className="bg-[#F4B400] text-[#5c3a21] px-4 py-2 rounded text-xs font-bold uppercase shadow-sm hover:bg-[#d9a000] flex items-center"><Search size={14} className="mr-1"/> Buscar Ingrediente</button>
                        </div>
                    </div>
                    
                    <div className="space-y-2 mb-4">
                      {(!formData.formulation || formData.formulation.length === 0) ? (
-                        <p className="text-xs text-gray-500 italic text-center py-4 bg-white rounded border border-dashed border-gray-300">Nenhum ingrediente adicionado. Adicione ingredientes da TACO ou utilize ingredientes manuais para calcular a tabela nutricional.</p>
+                        <p className="text-xs text-gray-500 italic text-center py-4 bg-white rounded border border-dashed border-gray-300">Nenhum ingrediente adicionado à receita.<br/>Busque ingredientes do seu banco para calcular a tabela nutricional.</p>
                      ) : (
                         formData.formulation.map((item, idx) => (
                            <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-gray-200 shadow-sm">
@@ -848,6 +1252,8 @@
                   <tbody>
                     <NutriRow label="Kcal" val={formData.nutritional.kcal} onChange={v => updateNested('nutritional', 'kcal', v)} refVD={2000} />
                     <NutriRow label="Carboidratos (g)" val={formData.nutritional.carbs} onChange={v => updateNested('nutritional', 'carbs', v)} refVD={300} />
+                    <NutriRow label="Açúcares Totais (g)" val={formData.nutritional.totalSugars} onChange={v => updateNested('nutritional', 'totalSugars', v)} refVD={0} />
+                    <NutriRow label="Açúcares Adicionados (g)" val={formData.nutritional.addedSugars} onChange={v => updateNested('nutritional', 'addedSugars', v)} refVD={50} />
                     <NutriRow label="Proteínas (g)" val={formData.nutritional.proteins} onChange={v => updateNested('nutritional', 'proteins', v)} refVD={50} />
                     <NutriRow label="Gorduras Totais (g)" val={formData.nutritional.totalFats} onChange={v => updateNested('nutritional', 'totalFats', v)} refVD={55} />
                     <NutriRow label="Gorduras Saturadas (g)" val={formData.nutritional.satFats} onChange={v => updateNested('nutritional', 'satFats', v)} refVD={22} />
@@ -874,7 +1280,7 @@
       <tr className="border-b border-gray-100 bg-white hover:bg-gray-50">
         <td className="p-2">{label}</td>
         <td className="p-2 w-32"><input type="number" value={val} onChange={e => onChange(e.target.value)} className="w-full p-1.5 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-[#F4B400]" /></td>
-        <td className="p-2 font-bold text-gray-500 w-24 text-center bg-gray-50">{refVD > 0 ? Math.round((parseFloat(val || 0) / refVD) * 100) : 0}%</td>
+        <td className="p-2 font-bold text-gray-500 w-24 text-center bg-gray-50">{refVD > 0 ? Math.round((parseFloat(val || 0) / refVD) * 100) : (refVD === 0 && label.includes('Totais') ? '-' : 0)}{label.includes('Totais') && refVD === 0 ? '' : '%'}</td>
       </tr>
     );
 
@@ -927,11 +1333,13 @@
                   <section className="avoid-break"><h3 className="text-lg font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Informação Nutricional</h3><div className="border-[3px] border-black p-1.5 w-full max-w-[85%] font-sans text-black"><table className="w-full text-[12px]"><thead><tr className="border-b-[4px] border-black"><th colSpan="3" className="text-lg font-black pt-0 pb-1">INFORMAÇÃO NUTRICIONAL</th></tr><tr className="border-b-[2px] border-black"><th colSpan="3" className="font-normal text-left py-1 text-[11px] leading-tight"><span className="font-bold">Porção: {ficha.nutritional.portion}g ({ficha.nutritional.measure})</span></th></tr><tr className="border-b border-black font-black text-right"><td className="py-1 text-left"></td><td className="py-1 w-16">100 g</td><td className="py-1 w-16">% VD*</td></tr></thead><tbody>
                     <NutriPrintRow label="Valor energético (kcal)" val={ficha.nutritional.kcal} vd={Math.round((ficha.nutritional.kcal / 2000) * 100)} />
                     <NutriPrintRow label="Carboidratos (g)" val={ficha.nutritional.carbs} vd={Math.round((ficha.nutritional.carbs / 300) * 100)} />
+                    <NutriPrintRow label="Açúcares totais (g)" val={ficha.nutritional.totalSugars} vd="-" />
+                    <NutriPrintRow label="Açúcares adicionados (g)" val={ficha.nutritional.addedSugars} vd={Math.round((ficha.nutritional.addedSugars / 50) * 100)} />
                     <NutriPrintRow label="Proteínas (g)" val={ficha.nutritional.proteins} vd={Math.round((ficha.nutritional.proteins / 50) * 100)} />
-                    <NutriRow label="Gorduras totais (g)" val={ficha.nutritional.totalFats} vd={Math.round((ficha.nutritional.totalFats / 55) * 100)} />
-                    <NutriRow label="Gorduras saturadas (g)" val={ficha.nutritional.satFats} vd={Math.round((ficha.nutritional.satFats / 22) * 100)} />
-                    <NutriRow label="Gorduras trans (g)" val={ficha.nutritional.transFats} vd={ficha.nutritional.transFats > 0 ? '**' : '0'} />
-                    <NutriRow label="Fibra alimentar (g)" val={ficha.nutritional.fiber} vd={Math.round((ficha.nutritional.fiber / 25) * 100)} />
+                    <NutriPrintRow label="Gorduras totais (g)" val={ficha.nutritional.totalFats} vd={Math.round((ficha.nutritional.totalFats / 55) * 100)} />
+                    <NutriPrintRow label="Gorduras saturadas (g)" val={ficha.nutritional.satFats} vd={Math.round((ficha.nutritional.satFats / 22) * 100)} />
+                    <NutriPrintRow label="Gorduras trans (g)" val={ficha.nutritional.transFats} vd={ficha.nutritional.transFats > 0 ? '**' : '0'} />
+                    <NutriPrintRow label="Fibra alimentar (g)" val={ficha.nutritional.fiber} vd={Math.round((ficha.nutritional.fiber / 25) * 100)} />
                     <NutriPrintRow label="Sódio (mg)" val={ficha.nutritional.sodium} vd={Math.round((ficha.nutritional.sodium / 2000) * 100)} borderBottom={false} />
                   </tbody></table></div><p className="text-[9px] mt-1 text-black">*Percentual de valores diários fornecidos pela porção.</p></section>
                 </div>
