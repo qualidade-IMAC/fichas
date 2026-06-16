@@ -26,7 +26,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
   <style>
-    /* Esconde barra de rolagem mas mantém funcional */
+    /* Esconde barra de rolagem mas mantém funcional na visualização normal */
     .scrollbar-hide::-webkit-scrollbar { display: none; }
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -41,33 +41,37 @@
       display: flex;
       flex-direction: column;
     }
+    
     @media print {
-      @page { margin: 10mm 10mm 15mm 10mm; size: A4 portrait; }
-      body { 
-        background-color: white; 
-        margin: 0; 
-        padding: 0; 
+      /* Remove restrições globais de altura e overflow que travam a paginação do Chrome */
+      html, body, #root {
+        height: auto !important;
+        min-height: 100% !important;
+        overflow: visible !important;
+        margin: 0;
+        padding: 0;
+        background-color: white;
         -webkit-print-color-adjust: exact !important; 
         print-color-adjust: exact !important; 
       }
+      
+      @page { margin: 10mm 10mm 15mm 10mm; size: A4 portrait; }
+      
       .no-print { display: none !important; }
       
-      /* CRITICAL FIX: Chrome cannot page-break inside a flex container. 
-         We must switch it to block display for printing. */
+      /* CRÍTICO: Corrige o bug do flexbox e permite a quebra automática de páginas */
       .pdf-container { 
         display: block !important; 
-        width: 100%; 
-        height: auto;
-        margin: 0; 
-        padding: 0; 
-        box-shadow: none; 
+        width: 100% !important; 
+        height: auto !important;
+        min-height: auto !important;
+        margin: 0 !important; 
+        padding: 0 !important; 
+        box-shadow: none !important; 
       }
       
-      /* Prevent elements from being split across pages */
-      .avoid-break { break-inside: avoid; page-break-inside: avoid; }
-      
-      /* Force a page break before specific elements if needed (optional) */
-      .page-break-before { page-break-before: always; break-before: page; }
+      /* Proteção contra corte no meio de elementos sensíveis */
+      .avoid-break { break-inside: avoid !important; page-break-inside: avoid !important; }
     }
   </style>
 </head>
@@ -588,7 +592,7 @@
       if (loadingAuth) return <div className="h-screen w-full flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#F4B400]"></div></div>;
 
       return (
-        <div className="flex h-screen bg-gray-50 text-gray-800 overflow-hidden">
+        <div className="flex h-screen bg-gray-50 text-gray-800 overflow-hidden print:h-auto print:overflow-visible print:block print:bg-white">
           {/* SIDEBAR */}
           <aside className={`no-print bg-[#5c3a21] text-white transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'} flex flex-col shadow-2xl z-20`}>
             <div className="p-4 flex items-center justify-center h-20 border-b border-[#4a2e1a]">
@@ -621,7 +625,7 @@
           </aside>
 
           {/* MAIN CONTENT AREA */}
-          <main className="flex-1 flex flex-col h-full relative">
+          <main className="flex-1 flex flex-col h-full relative print:h-auto print:block">
             <header className="no-print h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 shadow-sm z-10">
               <h1 className="text-2xl font-bold text-[#5c3a21] flex items-center">
                 {currentView === 'dashboard' && 'Dashboard de Qualidade'}
@@ -642,7 +646,7 @@
               </div>
             </header>
 
-            <div className="flex-1 overflow-auto bg-gray-50 p-6 h-[calc(100vh-80px)] relative">
+            <div className="flex-1 overflow-auto bg-gray-50 p-6 h-[calc(100vh-80px)] relative print:h-auto print:overflow-visible print:block print:p-0 print:m-0">
               {currentView === 'dashboard' && <DashboardView fichas={fichas} customIngredients={customIngredients} onNavigate={setCurrentView} />}
               {currentView === 'list' && <ListView fichas={fichas} onEdit={(f) => { setSelectedFicha(f); setCurrentView('form'); }} onPdf={(f) => { setSelectedFicha(f); setCurrentView('pdf'); }} onNew={() => { setSelectedFicha(emptyFicha); setCurrentView('form'); }} onDelete={handleDelete} onImport={(f) => { setSelectedFicha(f); setCurrentView('form'); }} onDuplicate={handleDuplicate} />}
               {currentView === 'ingredients' && <IngredientsView ingredients={customIngredients} onSave={handleSaveIngredient} onDelete={handleDeleteIngredient} />}
