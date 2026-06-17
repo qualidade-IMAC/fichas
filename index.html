@@ -1360,8 +1360,8 @@
                     <NutriRow label="Açúcares Totais (g)" val={formData.nutritional.totalSugars} onChange={v => updateNested('nutritional', 'totalSugars', v)} refVD={0} />
                     <NutriRow label="Açúcares Adicionados (g)" val={formData.nutritional.addedSugars} onChange={v => updateNested('nutritional', 'addedSugars', v)} refVD={50} />
                     <NutriRow label="Proteínas (g)" val={formData.nutritional.proteins} onChange={v => updateNested('nutritional', 'proteins', v)} refVD={50} />
-                    <NutriRow label="Gorduras Totais (g)" val={formData.nutritional.totalFats} onChange={v => updateNested('nutritional', 'totalFats', v)} refVD={55} />
-                    <NutriRow label="Gorduras Saturadas (g)" val={formData.nutritional.satFats} onChange={v => updateNested('nutritional', 'satFats', v)} refVD={22} />
+                    <NutriRow label="Gorduras Totais (g)" val={formData.nutritional.totalFats} onChange={v => updateNested('nutritional', 'totalFats', v)} refVD={65} />
+                    <NutriRow label="Gorduras Saturadas (g)" val={formData.nutritional.satFats} onChange={v => updateNested('nutritional', 'satFats', v)} refVD={20} />
                     <NutriRow label="Gorduras Trans (g)" val={formData.nutritional.transFats} onChange={v => updateNested('nutritional', 'transFats', v)} refVD={0} />
                     <NutriRow label="Fibra Alimentar (g)" val={formData.nutritional.fiber} onChange={v => updateNested('nutritional', 'fiber', v)} refVD={25} />
                     <NutriRow label="Sódio (mg)" val={formData.nutritional.sodium} onChange={v => updateNested('nutritional', 'sodium', v)} refVD={2000} />
@@ -1543,9 +1543,9 @@
                             <NutriPrintRow label="Açúcares totais (g)" val={ficha.nutritional.totalSugars} vd="-" portion={ficha.nutritional.portion} />
                             <NutriPrintRow label="Açúcares adicionados (g)" val={ficha.nutritional.addedSugars} vd={Math.round((ficha.nutritional.addedSugars / 50) * 100)} portion={ficha.nutritional.portion} />
                             <NutriPrintRow label="Proteínas (g)" val={ficha.nutritional.proteins} vd={Math.round((ficha.nutritional.proteins / 50) * 100)} portion={ficha.nutritional.portion} />
-                            <NutriPrintRow label="Gorduras totais (g)" val={ficha.nutritional.totalFats} vd={Math.round((ficha.nutritional.totalFats / 55) * 100)} portion={ficha.nutritional.portion} />
-                            <NutriPrintRow label="Gorduras saturadas (g)" val={ficha.nutritional.satFats} vd={Math.round((ficha.nutritional.satFats / 22) * 100)} portion={ficha.nutritional.portion} />
-                            <NutriPrintRow label="Gorduras trans (g)" val={ficha.nutritional.transFats} vd={ficha.nutritional.transFats > 0 ? '**' : '0'} portion={ficha.nutritional.portion} />
+                            <NutriPrintRow label="Gorduras totais (g)" val={ficha.nutritional.totalFats} vd={Math.round((ficha.nutritional.totalFats / 65) * 100)} portion={ficha.nutritional.portion} />
+                            <NutriPrintRow label="Gorduras saturadas (g)" val={ficha.nutritional.satFats} vd={Math.round((ficha.nutritional.satFats / 20) * 100)} portion={ficha.nutritional.portion} />
+                            <NutriPrintRow label="Gorduras trans (g)" val={ficha.nutritional.transFats} vd="-" portion={ficha.nutritional.portion} />
                             <NutriPrintRow label="Fibra alimentar (g)" val={ficha.nutritional.fiber} vd={Math.round((ficha.nutritional.fiber / 25) * 100)} portion={ficha.nutritional.portion} />
                             <NutriPrintRow label="Sódio (mg)" val={ficha.nutritional.sodium} vd={Math.round((ficha.nutritional.sodium / 2000) * 100)} portion={ficha.nutritional.portion} borderBottom={false} />
                           </tbody>
