@@ -137,13 +137,7 @@
 
     const mockFichas = [
       {
-        id: 'PF-001',
-        code: 'PF-001',
-        name: 'Pão Francês',
-        category: 'Pães',
-        version: 1,
-        status: 'active',
-        updatedAt: '16/06/2026',
+        id: 'PF-001', code: 'PF-001', name: 'Pão Francês', category: 'Pães', version: 1, status: 'active', updatedAt: '16/06/2026',
         coverImage: 'https://images.unsplash.com/photo-1598373182133-52452f7691ef?w=800&q=80',
         general: { brand: 'IMAC', description: 'Pão Francês Tradicional IMAC.' },
         technical: { unitsPerPackage: 71, packageWeight: '5 kg', unitWeight: '70g', perTray: 20, ovens: [{ id: 1, name: 'Forno Lastro', temp: '200°C', time: '17 min', vapor: 'Sim' }, { id: 2, name: 'Forno Turbo', temp: '180°C', time: '17 min', vapor: 'Sim' }] },
@@ -160,36 +154,7 @@
         nutritional: { finalYield: '', portionsPerPackage: 100, portion: 50, measure: '5/7 unidade', kcal: 140, carbs: 24, totalSugars: 0, addedSugars: 0, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 242 }
       },
       {
-        id: 'PC-001',
-        code: 'PC-001',
-        name: 'Pão Ciabatta',
-        category: 'Pães Especiais',
-        version: 1,
-        status: 'active',
-        updatedAt: '16/06/2026',
-        coverImage: 'https://images.unsplash.com/photo-1550617931-e17a7b70dce2?w=800&q=80',
-        general: { brand: 'IMAC', description: 'Pão rústico de fermentação especial.' },
-        technical: { unitsPerPackage: 71, packageWeight: '5 kg', unitWeight: '70g', perTray: 20, ovens: [{ id: 1, name: 'Forno Lastro', temp: '200°C', time: '17 min', vapor: 'Sim' }, { id: 2, name: 'Forno Turbo', temp: '175°C', time: '17 min', vapor: 'Sim' }] },
-        ingredients: { text: 'Farinha de trigo enriquecida com ferro e ácido fólico, água, sal, fermento biológico, aroma de manteiga, propionato de cálcio (conservante), reforçador de farinha (AC. Ascórbico/INS 300).', containsGluten: true, containsLactose: false, allergensText: 'DERIVADOS DE TRIGO E DE SOJA' },
-        conservation: { frozen: '-12°C ou mais frio', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
-        validity: { package: '60 dias', postBaking: 'Diário', postDefrost: 'Não recongelar' },
-        preparationSteps: [
-          { id: 1, title: 'Pão Congelado', desc: 'Após aplicar untaforma, colocar 20 pães por tela; Deixar os pães no carrinho para desgelo por 1 hora.', image: '' },
-          { id: 2, title: 'Pão em Desgelo', desc: 'Após o desgelo, borrifar água nos pães e mãos, modelar e ajustar os pães. Colocar saco aberto cobrindo as telas e fechar a porta do mesmo. Borrifar água nos pães a cada 1 hora.', image: '' },
-          { id: 3, title: 'Pão em Fermentação', desc: 'Deixar os pães fermentarem por 5 a 6 horas (dependendo da temperatura do local). Após esse período, borrifar água nos pães e fazer 1 corte na horizontal em cada um (pode-se polvilhar farinha de trigo sobre os mesmos antes do corte).', image: '' },
-          { id: 4, title: 'Pão Assado', desc: 'Assar em forno Lastro: 200°C/17min com vapor ligado; Turbo: 175°C/17min com vapor ligado.', image: '' }
-        ],
-        formulation: [],
-        nutritional: { finalYield: '', portionsPerPackage: 100, portion: 50, measure: '5/7 unidade', kcal: 140, carbs: 24, totalSugars: 0, addedSugars: 0, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 241 }
-      },
-      {
-        id: 'DN-001',
-        code: 'DN-001',
-        name: 'Donuts',
-        category: 'Doces / Fritos',
-        version: 1,
-        status: 'active',
-        updatedAt: '16/06/2026',
+        id: 'DN-001', code: 'DN-001', name: 'Donuts', category: 'Doces / Fritos', version: 1, status: 'active', updatedAt: '16/06/2026',
         coverImage: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=800&q=80',
         general: { brand: 'IMAC', description: 'Donuts congelados para fritura.' },
         technical: { unitsPerPackage: 75, packageWeight: '5 kg', unitWeight: '66g', perTray: 12, ovens: [{ id: 1, name: 'Fritadeira', temp: '150°C', time: 'Varia', vapor: 'Não' }] },
@@ -204,61 +169,28 @@
         ],
         formulation: [],
         nutritional: { finalYield: '', portionsPerPackage: 100, portion: 50, measure: '5/6 unidade', kcal: 137, carbs: 23, totalSugars: 2, addedSugars: 1, proteins: 3, totalFats: 2, satFats: 1, transFats: 0, fiber: 1, sodium: 241 }
-      },
-      {
-        id: 'PFL-001',
-        code: 'PFL-001',
-        name: 'Pão Francês Leve',
-        category: 'Pães',
-        version: 1,
-        status: 'active',
-        updatedAt: '16/06/2026',
-        coverImage: 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?w=800&q=80',
-        general: { brand: 'IMAC', description: 'Pão francês com adição de farinha integral.' },
-        technical: { unitsPerPackage: 71, packageWeight: '5 kg', unitWeight: '70g', perTray: 20, ovens: [{ id: 1, name: 'Forno Lastro', temp: '200°C', time: '17 min', vapor: 'Sim' }, { id: 2, name: 'Forno Turbo', temp: '175°C', time: '17 min', vapor: 'Sim' }] },
-        ingredients: { text: 'Farinha de trigo enriquecida de ferro e ácido fólico, água, farinha de trigo integral, sal, fermento biológico, propionato de cálcio (conservante), reforçador de farinha (AC. Ascórbico/INS 300).', containsGluten: true, containsLactose: false, allergensText: 'DERIVADOS DE TRIGO E DE SOJA' },
-        conservation: { frozen: '-12°C ou mais frio', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
-        validity: { package: '60 dias', postBaking: 'Diário', postDefrost: 'Não recongelar' },
-        preparationSteps: [
-          { id: 1, title: 'Pão Congelado', desc: 'Após aplicar untaforma, colocar 20 pães por tela; Deixar os pães no carrinho para desgelo por 1 hora.', image: '' },
-          { id: 2, title: 'Pão em Desgelo', desc: 'Após o desgelo, borrifar água nos pães e mãos, modelar e ajustá-los. Levar a tela de volta ao carrinho, colocar saco aberto cobrindo as telas e fechar a porta do mesmo. Borrifar água nos pães a cada 1 hora.', image: '' },
-          { id: 3, title: 'Pão em Fermentação', desc: 'Deixar os pães fermentarem por 5 a 6 horas (dependendo da temperatura do local); Após esse período, borrifar água nos pães e fazer 1 corte horizontal em cada.', image: '' },
-          { id: 4, title: 'Pão Assado', desc: 'Assar em forno Lastro: 200°C/17min com vapor ligado; Turbo: 175°C/17min com vapor e turbo ligados.', image: '' }
-        ],
-        formulation: [],
-        nutritional: { finalYield: '', portionsPerPackage: 100, portion: 50, measure: '5/7 unidade', kcal: 127, carbs: 23, totalSugars: 0, addedSugars: 0, proteins: 3, totalFats: 2, satFats: 0, transFats: 0, fiber: 2, sodium: 235 }
       }
     ];
 
     const mockIngredients = [
       { id: 'ING-1', name: 'Farinha de Trigo Especial', supplier: 'Moinho Rosa', referencePortion: 50, kcal: 173, carbs: 36, totalSugars: 0, addedSugars: 0, proteins: 5, totalFats: 0, satFats: 0, transFats: 0, fiber: 1.5, sodium: 0 },
-      { id: 'ING-2', name: 'Margarina Folhada 80% Lipídios', supplier: 'Marca Y', referencePortion: 10, kcal: 72, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 8, satFats: 4, transFats: 1.5, fiber: 0, sodium: 60 },
-      { id: 'ING-3', name: 'Fermento Biológico Seco', supplier: 'Marca Z', referencePortion: 10, kcal: 35, carbs: 3, totalSugars: 0, addedSugars: 0, proteins: 4, totalFats: 0.5, satFats: 0, transFats: 0, fiber: 2.5, sodium: 5 }
+      { id: 'ING-2', name: 'Margarina Folhada 80% Lipídios', supplier: 'Marca Y', referencePortion: 10, kcal: 72, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 8, satFats: 4, transFats: 1.5, fiber: 0, sodium: 60 }
     ];
 
     const emptyFicha = {
-      id: '', code: '', name: '', category: '', version: 1, status: 'draft', coverImage: '',
-      general: { brand: 'IMAC', description: '' },
+      id: '', code: '', name: '', category: '', version: 1, status: 'draft', coverImage: '', general: { brand: 'IMAC', description: '' },
       technical: { unitsPerPackage: 0, packageWeight: '', unitWeight: '', perTray: 0, ovens: [] },
       ingredients: { text: '', containsGluten: false, containsLactose: false, allergensText: '' },
       conservation: { frozen: '', refrigerated: '', ambient: '', openPackage: '', closedPackage: '' },
       validity: { package: '', postBaking: '', postDefrost: '' },
-      preparationSteps: [],
-      formulation: [], 
+      preparationSteps: [], formulation: [], 
       nutritional: { finalYield: '', portionsPerPackage: 100, portion: 0, measure: '', kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 },
-      approval: { show: false, createdBy: '', reviewedBy: '', approvedBy: '' },
-      revisionHistory: []
+      approval: { show: false, createdBy: '', reviewedBy: '', approvedBy: '' }, revisionHistory: []
     };
 
-    // ============================================================================
-    // PARSER DE PDF (EXTRAÇÃO INTELIGENTE DE DADOS DO LAYOUT IMAC)
-    // ============================================================================
     const parseIMACPdf = (text, filename) => {
       const normalizedText = text.replace(/\s+/g, ' ');
-      const getMatch = (regex, fallback = '') => {
-         const m = normalizedText.match(regex);
-         return m ? m[1].trim() : fallback;
-      };
+      const getMatch = (regex, fallback = '') => { const m = normalizedText.match(regex); return m ? m[1].trim() : fallback; };
 
       let name = getMatch(/Ficha Técnica\s+(.*?)\s+Unidades por Pacote/i);
       if(!name) name = filename.replace('.pdf', '');
@@ -294,9 +226,7 @@
 
       let prepRaw = "";
       const prepMatch = normalizedText.match(/fornecidos pela por[cç][aã]o[\s\.\*\|"']*(.*?)(?:IMAC Ind[uú]stria|Av\. Cel\. C[ií]cero)/i);
-      if (prepMatch) {
-          prepRaw = prepMatch[1].replace(/\|/g, '').trim();
-      }
+      if (prepMatch) prepRaw = prepMatch[1].replace(/\|/g, '').trim();
 
       let prepSteps = [];
       if (prepRaw) {
@@ -304,23 +234,13 @@
          let currentId = 1;
          for (let i = 0; i < tokens.length; i++) {
              if (tokens[i].trim().endsWith(':')) {
-                 prepSteps.push({
-                     id: currentId++,
-                     title: tokens[i].replace(':', '').trim(),
-                     desc: (tokens[i+1] && !tokens[i+1].trim().endsWith(':')) ? tokens[i+1].trim() : '',
-                     image: ''
-                 });
+                 prepSteps.push({ id: currentId++, title: tokens[i].replace(':', '').trim(), desc: (tokens[i+1] && !tokens[i+1].trim().endsWith(':')) ? tokens[i+1].trim() : '', image: '' });
              }
          }
       }
 
       if (prepSteps.length === 0 && prepRaw.length > 10) {
-          prepSteps.push({
-              id: 1,
-              title: 'Modo de Preparo (Revisar Textos)',
-              desc: prepRaw,
-              image: ''
-          });
+          prepSteps.push({ id: 1, title: 'Modo de Preparo (Revisar Textos)', desc: prepRaw, image: '' });
       }
 
       return {
@@ -330,17 +250,12 @@
         ingredients: { text: ingredientsText, containsGluten: containsGluten, containsLactose: containsLactose, allergensText: allergens },
         conservation: { frozen: '-12°C ou mais frio', refrigerated: 'N/A', ambient: 'N/A', openPackage: '1 mês', closedPackage: 'Vide validade' },
         validity: { package: valPacote, postBaking: valAssado, postDefrost: 'Não recongelar' },
-        preparationSteps: prepSteps,
-        formulation: [],
+        preparationSteps: prepSteps, formulation: [],
         nutritional: { finalYield: '', portionsPerPackage: portionsPkg, portion: portion, measure: measure, kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 },
-        approval: { show: false, createdBy: '', reviewedBy: '', approvedBy: '' },
-        revisionHistory: []
+        approval: { show: false, createdBy: '', reviewedBy: '', approvedBy: '' }, revisionHistory: []
       };
     };
 
-    // ============================================================================
-    // COMPONENTE PRINCIPAL APP
-    // ============================================================================
     function App() {
       const [user, setUser] = useState(null);
       const [loadingAuth, setLoadingAuth] = useState(true);
@@ -351,20 +266,38 @@
       const [sidebarOpen, setSidebarOpen] = useState(true);
       const [isFallbackMode, setIsFallbackMode] = useState(false);
 
-      // NOVO: Sistema Universal de Diálogos e Alertas
+      // Sistema Universal de Diálogos e Alertas
       const [dialog, setDialog] = useState({ isOpen: false, type: 'alert', title: '', message: '', onConfirm: null });
       const showMessage = (title, message) => setDialog({ isOpen: true, type: 'alert', title, message, onConfirm: null });
       const showConfirm = (title, message, onConfirm) => setDialog({ isOpen: true, type: 'confirm', title, message, onConfirm });
       const closeDialog = () => setDialog({ ...dialog, isOpen: false });
 
-      const [companySettings, setCompanySettings] = useState({
-        name: 'IMAC Indústria de Massas Congeladas',
-        address: 'Av. Cel. Cícero Sá, 4000 - Camará, Aquiraz/CE, CEP: 61700-000',
-        phone: '(85) 3878-1249',
-        email: 'qualidade@imaccongelados.com.br',
-        logo: '',
-        fichaLogo: ''
-      });
+      // Estado inicial das configurações carrega do localStorage primeiro
+      const getInitialSettings = () => {
+        const savedSettings = localStorage.getItem('imac_company_settings');
+        if (savedSettings) {
+          try {
+            return JSON.parse(savedSettings);
+          } catch (e) {
+            console.error("Erro ao carregar configurações salvas", e);
+          }
+        }
+        return {
+          name: 'IMAC Indústria de Massas Congeladas',
+          address: 'Av. Cel. Cícero Sá, 4000 - Camará, Aquiraz/CE, CEP: 61700-000',
+          phone: '(85) 3878-1249',
+          email: 'qualidade@imaccongelados.com.br',
+          logo: '',
+          fichaLogo: ''
+        };
+      };
+
+      const [companySettings, setCompanySettings] = useState(getInitialSettings);
+
+      // Efeito que observa qualquer mudança em companySettings e salva no localStorage permanentemente
+      useEffect(() => {
+        localStorage.setItem('imac_company_settings', JSON.stringify(companySettings));
+      }, [companySettings]);
 
       useEffect(() => {
         const initAuth = async () => {
@@ -378,9 +311,7 @@
         initAuth();
         
         const unsub = onAuthStateChanged(auth, (u) => {
-          if (u) {
-            setUser({ ...u, name: 'Equipe Qualidade', role: 'admin' });
-          }
+          if (u) setUser({ ...u, name: 'Equipe Qualidade', role: 'admin' });
           setLoadingAuth(false);
         }, (err) => {
           console.error("Erro de estado Auth:", err);
@@ -401,11 +332,8 @@
 
         const colRef = collection(db, 'fichas');
         const unsubFichas = onSnapshot(colRef, (snap) => {
-          if (!snap.empty) {
-            setFichas(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-          } else {
-            setFichas([]);
-          }
+          if (!snap.empty) setFichas(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          else setFichas([]);
         }, (err) => {
            console.error("Erro Firestore Fichas:", err);
            if (err.message && err.message.includes('Missing or insufficient permissions')) {
@@ -416,11 +344,8 @@
 
         const ingRef = collection(db, 'ingredients');
         const unsubIng = onSnapshot(ingRef, (snap) => {
-          if (!snap.empty) {
-            setCustomIngredients(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-          } else {
-            setCustomIngredients([]);
-          }
+          if (!snap.empty) setCustomIngredients(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          else setCustomIngredients([]);
         }, (err) => console.error("Erro Firestore Ingredientes:", err));
         
         return () => { unsubFichas && unsubFichas(); unsubIng && unsubIng(); }
@@ -436,26 +361,16 @@
           setCurrentView('list');
           return;
         }
-
         try {
           await setDoc(doc(db, 'fichas', saveId), payload);
           setCurrentView('list');
         } catch (error) {
-          console.error(error);
           showMessage("Erro de Salvamento", "Ocorreu um erro ao salvar a ficha: " + error.message);
         }
       };
 
       const handleDuplicate = async (fichaToDuplicate) => {
-          const duplicatedData = {
-              ...fichaToDuplicate,
-              id: '',
-              name: `${fichaToDuplicate.name} (Cópia)`,
-              status: 'draft',
-              updatedAt: new Date().toLocaleDateString('pt-BR'),
-              revisionHistory: []
-          };
-          
+          const duplicatedData = { ...fichaToDuplicate, id: '', name: `${fichaToDuplicate.name} (Cópia)`, status: 'draft', updatedAt: new Date().toLocaleDateString('pt-BR'), revisionHistory: [] };
           showConfirm("Duplicar Ficha", `Deseja criar uma cópia idêntica da ficha "${fichaToDuplicate.name}"?`, () => {
               setSelectedFicha(duplicatedData);
               setCurrentView('form');
@@ -464,10 +379,7 @@
 
       const handleDelete = async (id) => {
         showConfirm("Excluir Ficha", "Tem certeza que deseja excluir esta Ficha Técnica permanentemente?", async () => {
-          if (isFallbackMode) {
-            setFichas(prev => prev.filter(f => f.id !== id));
-            return;
-          }
+          if (isFallbackMode) return setFichas(prev => prev.filter(f => f.id !== id));
           try {
             await deleteDoc(doc(db, 'fichas', id));
           } catch (error) {
@@ -481,10 +393,7 @@
         const saveId = isNew ? `ING-${Date.now()}` : ingData.id;
         const payload = { ...ingData, id: saveId, updatedAt: new Date().toLocaleDateString('pt-BR') };
         
-        if (isFallbackMode) {
-          setCustomIngredients(prev => isNew ? [payload, ...prev] : prev.map(i => i.id === saveId ? payload : i));
-          return;
-        }
+        if (isFallbackMode) return setCustomIngredients(prev => isNew ? [payload, ...prev] : prev.map(i => i.id === saveId ? payload : i));
         try {
           await setDoc(doc(db, 'ingredients', saveId), payload);
         } catch (error) {
@@ -494,10 +403,7 @@
 
       const handleDeleteIngredient = async (id) => {
         showConfirm("Excluir Ingrediente", "Tem certeza que deseja excluir este Ingrediente do banco?", async () => {
-          if (isFallbackMode) {
-            setCustomIngredients(prev => prev.filter(i => i.id !== id));
-            return;
-          }
+          if (isFallbackMode) return setCustomIngredients(prev => prev.filter(i => i.id !== id));
           try {
             await deleteDoc(doc(db, 'ingredients', id));
           } catch (error) {
@@ -606,9 +512,6 @@
       );
     }
 
-    // ============================================================================
-    // COMPONENTES SECUNDÁRIOS E VIEWS
-    // ============================================================================
     const NavItem = ({ icon, label, active, onClick, open }) => (
       <div onClick={onClick} className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-all ${active ? 'bg-[#F4B400] text-[#5c3a21] font-bold shadow-md' : 'text-gray-300 hover:bg-[#4a2e1a] hover:text-white font-medium'}`}>
         {icon}
@@ -1472,7 +1375,7 @@
               <div className="block mb-2">
                 <div className="grid grid-cols-[1fr_1.3fr] gap-5 mb-2">
                   <div className="space-y-3">
-                    {/* Imagem de Capa */}
+                    {/* Imagem de Capa Aumentada (h-44) */}
                     <div className="border-[3px] border-[#F4B400] rounded-lg overflow-hidden h-44 w-full"><img src={ficha.coverImage} className="w-full h-full object-cover" /></div>
                     
                     <div className="bg-white rounded border border-gray-200 p-2 text-[10px] space-y-1.5 shadow-sm text-gray-800 leading-tight">
@@ -1499,14 +1402,10 @@
                     <div>
                       <h3 className="font-black text-black bg-[#F4B400] px-2 py-1 text-center text-[10px] uppercase rounded-t border-b-2 border-[#5c3a21]">Armazenamento e Validade</h3>
                       <div className="border border-black bg-white p-2 text-[9px] text-gray-800 space-y-1.5 shadow-sm">
-                        <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">ARMAZENAMENTO (TEMPERATURA):</span> <span>{ficha.conservation.frozen}</span></p>
-                        <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">VALIDADE (EMBALAGEM FECHADA):</span> <span>{ficha.validity.package}</span></p>
-                        <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">VALIDADE (EMBALAGEM ABERTA):</span> <span>{ficha.conservation.openPackage}</span></p>
-                        <p className="flex justify-between pb-0.5"><span className="font-bold text-black">VALIDADE (APÓS PREPARO/ASSADO):</span> <span>{ficha.validity.postBaking}</span></p>
-                        
-                        <div className="border-t border-gray-300 mt-2 pt-1.5 text-justify text-[8px] text-gray-600 leading-tight">
-                          <span className="font-bold text-red-600">ATENÇÃO:</span> {ficha.validity.postDefrost === 'Não recongelar' ? 'Uma vez descongelado, este produto não deverá ser novamente congelado. Manter a embalagem bem vedada.' : `Após o desgelo, ${ficha.validity.postDefrost.toLowerCase()}.`}
-                        </div>
+                        <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">ARMAZENAMENTO (TEMP.):</span> <span>{ficha.conservation.frozen}</span></p>
+                        <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">VALIDADE (EMB. FECHADA):</span> <span>{ficha.validity.package}</span></p>
+                        <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">VALIDADE (EMB. ABERTA):</span> <span>{ficha.conservation.openPackage}</span></p>
+                        <p className="flex justify-between pb-0.5"><span className="font-bold text-black">VALIDADE (APÓS PREPARO):</span> <span>{ficha.validity.postBaking}</span></p>
                       </div>
                     </div>
                   </div>
@@ -1531,7 +1430,7 @@
                                 Porção: {ficha.nutritional.portion}g ({ficha.nutritional.measure})
                               </th>
                             </tr>
-                            <tr className="border-b border-black font-black text-center">
+                            <tr className="border-b border-black font-black text-center bg-gray-50">
                               <td className="py-0.5 px-1 text-left border-r border-black w-[45%]"></td>
                               <td className="py-0.5 px-1 border-r border-black w-[18%]">100 g</td>
                               <td className="py-0.5 px-1 border-r border-black w-[18%]">{ficha.nutritional.portion} g</td>
@@ -1564,6 +1463,7 @@
                       {ficha.preparationSteps.map((step, idx) => (
                         <div key={idx} className="relative avoid-break">
                           <div className="font-black text-[11px] text-[#5c3a21] mb-0.5 leading-none"><span className="text-[#F4B400] text-sm mr-1">•</span>{step.title}:</div>
+                          {/* Imagens de Preparo Aumentadas (h-28 = 112px) */}
                           {step.image && (<div className="w-full h-28 mb-1 bg-gray-100 rounded overflow-hidden border border-gray-200"><img src={step.image} className="w-full h-full object-cover" /></div>)}
                           <p className="text-[10px] text-justify leading-tight text-gray-800">{step.desc}</p>
                         </div>
