@@ -1279,10 +1279,10 @@
             )}
             {activeTab === 4 && (
               <div className="grid grid-cols-2 gap-6">
-                <InputGroup label="Validade do Pacote Original" value={formData.validity.package} onChange={v => updateNested('validity', 'package', v)} />
-                <InputGroup label="Validade Após Assamento" value={formData.validity.postBaking} onChange={v => updateNested('validity', 'postBaking', v)} />
-                <InputGroup label="Freezer" value={formData.conservation.frozen} onChange={v => updateNested('conservation', 'frozen', v)} />
-                <InputGroup label="Embalagem Fechada" value={formData.conservation.closedPackage} onChange={v => updateNested('conservation', 'closedPackage', v)} />
+                <InputGroup label="Temp. de Armazenamento" value={formData.conservation.frozen} onChange={v => updateNested('conservation', 'frozen', v)} placeholder="Ex: Freezer (-12°C ou mais frio)" />
+                <InputGroup label="Validade (Pacote Fechado)" value={formData.validity.package} onChange={v => updateNested('validity', 'package', v)} placeholder="Ex: 60 dias" />
+                <InputGroup label="Validade (Após Aberto)" value={formData.conservation.openPackage} onChange={v => updateNested('conservation', 'openPackage', v)} placeholder="Ex: 1 mês" />
+                <InputGroup label="Validade (Após Assado/Pronto)" value={formData.validity.postBaking} onChange={v => updateNested('validity', 'postBaking', v)} placeholder="Ex: Diário" />
               </div>
             )}
             {activeTab === 6 && (
@@ -1497,16 +1497,17 @@
                     </div>
                     
                     <div>
-                      <h3 className="font-black text-black bg-[#F4B400] px-2 py-1 text-center text-[10px] uppercase rounded-t border-b-2 border-[#5c3a21]">Armazenamento</h3>
-                      <div className="border border-black bg-white text-[8px]">
-                        <div className="grid grid-cols-3 text-center font-bold border-b border-black divide-x divide-black bg-gray-100"><div className="p-1">MODO</div><div className="p-1">FECHADA</div><div className="p-1">ABERTA</div></div>
-                        <div className="grid grid-cols-3 text-center divide-x divide-black items-center"><div className="p-1 font-bold bg-gray-50">Freezer<br/>({ficha.conservation.frozen})</div><div className="p-1">{ficha.conservation.closedPackage}</div><div className="p-1">{ficha.conservation.openPackage}</div></div>
+                      <h3 className="font-black text-black bg-[#F4B400] px-2 py-1 text-center text-[10px] uppercase rounded-t border-b-2 border-[#5c3a21]">Armazenamento e Validade</h3>
+                      <div className="border border-black bg-white p-2 text-[9px] text-gray-800 space-y-1.5 shadow-sm">
+                        <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">ARMAZENAMENTO (TEMPERATURA):</span> <span>{ficha.conservation.frozen}</span></p>
+                        <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">VALIDADE (EMBALAGEM FECHADA):</span> <span>{ficha.validity.package}</span></p>
+                        <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">VALIDADE (EMBALAGEM ABERTA):</span> <span>{ficha.conservation.openPackage}</span></p>
+                        <p className="flex justify-between pb-0.5"><span className="font-bold text-black">VALIDADE (APÓS PREPARO/ASSADO):</span> <span>{ficha.validity.postBaking}</span></p>
+                        
+                        <div className="border-t border-gray-300 mt-2 pt-1.5 text-justify text-[8px] text-gray-600 leading-tight">
+                          <span className="font-bold text-red-600">ATENÇÃO:</span> {ficha.validity.postDefrost === 'Não recongelar' ? 'Uma vez descongelado, este produto não deverá ser novamente congelado. Manter a embalagem bem vedada.' : `Após o desgelo, ${ficha.validity.postDefrost.toLowerCase()}.`}
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-2 text-center text-[9px]">
-                      <div className="border border-gray-300 rounded overflow-hidden"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Pacote</div><div className="p-1 bg-gray-50">{ficha.validity.package}</div></div>
-                      <div className="border border-gray-300 rounded overflow-hidden flex flex-col"><div className="bg-[#5c3a21] text-white font-bold p-1">Validade Assado</div><div className="p-1 bg-gray-50 flex-1 flex items-center justify-center font-bold">{ficha.validity.postBaking}</div></div>
                     </div>
                   </div>
 
