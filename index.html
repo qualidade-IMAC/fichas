@@ -491,21 +491,85 @@
     // ============================================================================
     // 4. TELA DE EDIÇÃO (FormView) COM AUTO-SAVE E VERSIONAMENTO
     // ============================================================================
+    
+    // COMPONENTE DE EDIÇÃO DE IMAGEM RESTAURADO
+    const ImageEditorModal = ({ src, onSave, onCancel, showMessage }) => {
+      const canvasRef = useRef(null);
+      const [scale, setScale] = useState(1);
+      const [offsetX, setOffsetX] = useState(0);
+      const [offsetY, setOffsetY] = useState(0);
+      const [brightness, setBrightness] = useState(100);
+      const [contrast, setContrast] = useState(100);
+
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
+          const canvasRatio = canvas.width / canvas.height;
+          const imgRatio = img.width / img.height;
+          let drawWidth, drawHeight;
+          if (imgRatio > canvasRatio) { drawHeight = canvas.height; drawWidth = img.width * (canvas.height / img.height); } 
+          else { drawWidth = canvas.width; drawHeight = img.height * (canvas.width / img.width); }
+          drawWidth *= scale; drawHeight *= scale;
+          const dx = (canvas.width - drawWidth) / 2 + Number(offsetX);
+          const dy = (canvas.height - drawHeight) / 2 + Number(offsetY);
+          ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
+        };
+        img.src = src;
+      }, [src, scale, offsetX, offsetY, brightness, contrast]);
+
+      const handleConfirm = () => {
+        try { onSave(canvasRef.current.toDataURL('image/jpeg', 0.85)); } 
+        catch (error) { showMessage("Erro", "Não foi possível editar esta imagem. Faça upload local."); }
+      };
+
+      return (
+        <div className="absolute inset-0 bg-black/80 z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden">
+            <div className="bg-[#5c3a21] text-white p-4 flex justify-between items-center">
+              <h3 className="font-bold flex items-center"><ImageIcon className="mr-2" size={18}/> Ajustar Imagem</h3>
+              <button onClick={onCancel} className="hover:text-[#F4B400]"><X size={20}/></button>
+            </div>
+            <div className="flex flex-col md:flex-row p-4 gap-6 bg-gray-50 h-[60vh] md:h-auto overflow-y-auto">
+              <div className="flex-1 flex flex-col items-center justify-center border border-dashed border-gray-400 bg-gray-200 rounded p-4">
+                 <canvas ref={canvasRef} width={800} height={600} className="w-full max-w-full h-auto shadow-md" style={{ maxWidth: '600px', aspectRatio: '4/3' }}></canvas>
+              </div>
+              <div className="w-full md:w-72 space-y-4 bg-white p-4 rounded-lg border shadow-sm">
+                <h4 className="font-bold text-[#5c3a21] border-b pb-2 text-sm flex items-center"><Settings size={16} className="mr-2"/> Controles</h4>
+                <div className="space-y-1"><label className="text-xs font-bold text-gray-600 flex justify-between"><span>Zoom</span> <span>{scale}x</span></label><input type="range" min="1" max="4" step="0.1" value={scale} onChange={e => setScale(e.target.value)} className="w-full accent-[#F4B400]" /></div>
+                <div className="space-y-1"><label className="text-xs font-bold text-gray-600">Horizontal</label><input type="range" min="-1000" max="1000" step="10" value={offsetX} onChange={e => setOffsetX(e.target.value)} className="w-full accent-[#F4B400]" /></div>
+                <div className="space-y-1"><label className="text-xs font-bold text-gray-600">Vertical</label><input type="range" min="-1000" max="1000" step="10" value={offsetY} onChange={e => setOffsetY(e.target.value)} className="w-full accent-[#F4B400]" /></div>
+                <div className="space-y-1"><label className="text-xs font-bold text-gray-600 flex justify-between"><span>Brilho</span> <span>{brightness}%</span></label><input type="range" min="30" max="200" step="5" value={brightness} onChange={e => setBrightness(e.target.value)} className="w-full accent-[#F4B400]" /></div>
+                <div className="space-y-1"><label className="text-xs font-bold text-gray-600 flex justify-between"><span>Contraste</span> <span>{contrast}%</span></label><input type="range" min="30" max="200" step="5" value={contrast} onChange={e => setContrast(e.target.value)} className="w-full accent-[#F4B400]" /></div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-gray-200 flex justify-end gap-3 bg-white">
+              <button onClick={onCancel} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 border rounded text-sm">Cancelar</button>
+              <button onClick={handleConfirm} className="bg-[#5c3a21] text-white px-6 py-2 rounded shadow font-bold hover:bg-[#4a2e1a] text-sm flex items-center"><Save size={16} className="mr-2"/> Aplicar</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
     const FormView = ({ ficha, customIngredients, onBack, onSave, showMessage, showConfirm, addToast }) => {
       const [activeTab, setActiveTab] = useState(1);
       const [formData, setFormData] = useState({ formulation: [], ...JSON.parse(JSON.stringify(ficha)) });
-      const [ingSearchModalOpen, setIngSearchModalOpen] = useState(false);
-      const [ingSearchTerm, setIngSearchTerm] = useState('');
-      const tabs = [{ id: 1, label: 'Gerais' }, { id: 2, label: 'Técnicos' }, { id: 3, label: 'Ingredientes' }, { id: 4, label: 'Conserv./Valid.' }, { id: 6, label: 'Preparo' }, { id: 7, label: 'Nutricional' }, { id: 8, label: 'Aprovação' }];
+      const [editorState, setEditorState] = useState({ isOpen: false, src: null, type: null, stepId: null });
+
+      // NUMERAÇÃO CORRIGIDA 1 A 7
+      const tabs = [{ id: 1, label: 'Gerais' }, { id: 2, label: 'Técnicos' }, { id: 3, label: 'Ingredientes' }, { id: 4, label: 'Conserv./Valid.' }, { id: 5, label: 'Preparo' }, { id: 6, label: 'Nutricional' }, { id: 7, label: 'Aprovação' }];
 
       const updateNested = (cat, field, val) => setFormData(p => ({ ...p, [cat]: { ...p[cat], [field]: val } }));
 
-      // Recuperação de Rascunho Automático (On Mount)
       useEffect(() => {
         const draft = localStorage.getItem('imac_ficha_draft');
         if (draft) {
            const parsed = JSON.parse(draft);
-           // Se era edição da mesma ficha ou se era uma ficha nova
            if (!ficha.id || ficha.id === parsed.id) {
                showConfirm("Recuperar Rascunho", "Encontramos alterações não salvas. Deseja recuperar os dados do último preenchimento automático?", () => {
                    setFormData(parsed);
@@ -515,22 +579,48 @@
         }
       }, []);
 
-      // Salvamento Automático (A cada 15 seg se houver mudanças)
       useEffect(() => {
-         const interval = setInterval(() => {
-            if (formData.name || formData.code) {
-               localStorage.setItem('imac_ficha_draft', JSON.stringify(formData));
-            }
-         }, 15000);
+         const interval = setInterval(() => { if (formData.name || formData.code) localStorage.setItem('imac_ficha_draft', JSON.stringify(formData)); }, 15000);
          return () => clearInterval(interval);
       }, [formData]);
 
       const handleExplicitSave = (dataToSave, message) => {
-         localStorage.removeItem('imac_ficha_draft'); // Limpa o rascunho ao salvar de verdade
+         localStorage.removeItem('imac_ficha_draft'); 
          onSave(dataToSave, message);
       };
 
-      // Cálculo Nutricional com Precisão Corrigida
+      // Funções de Imagem Restauradas
+      const handleImageUpload = (id, e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const r = new FileReader();
+          r.onloadend = () => setEditorState({ isOpen: true, src: r.result, type: 'step', stepId: id });
+          r.readAsDataURL(file);
+        }
+      };
+
+      const handleCoverImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const r = new FileReader();
+          r.onloadend = () => setEditorState({ isOpen: true, src: r.result, type: 'cover', stepId: null });
+          r.readAsDataURL(file);
+        }
+      };
+
+      const handleEditExistingImage = (type, src, stepId = null) => setEditorState({ isOpen: true, src: src, type: type, stepId: stepId });
+
+      const handleEditorSave = (editedDataUrl) => {
+        if (editorState.type === 'cover') setFormData({ ...formData, coverImage: editedDataUrl });
+        else if (editorState.type === 'step') {
+          setFormData(prev => ({
+            ...prev,
+            preparationSteps: prev.preparationSteps.map(s => s.id === editorState.stepId ? { ...s, image: editedDataUrl } : s)
+          }));
+        }
+        setEditorState({ isOpen: false, src: null, type: null, stepId: null });
+      };
+
       const recalcFormulation = (form, yieldVal, portionVal) => {
         if (!form || form.length === 0) return setFormData(prev => ({ ...prev, formulation: form }));
         const sumWeight = form.reduce((sum, item) => sum + Number(item.qty || 0), 0);
@@ -564,6 +654,10 @@
       return (
         <div className="max-w-6xl mx-auto bg-white rounded-xl shadow border flex flex-col h-full relative">
           
+          {editorState.isOpen && (
+             <ImageEditorModal src={editorState.src} onSave={handleEditorSave} onCancel={() => setEditorState({ isOpen: false, src: null, type: null, stepId: null })} showMessage={showMessage} />
+          )}
+
           <div className="bg-white border-b border-gray-200 p-4 flex justify-between items-center z-10">
             <button onClick={onBack} className="flex items-center space-x-2 text-gray-500 hover:text-[#5c3a21] font-medium"><ArrowLeft size={18} /> <span>Voltar</span></button>
             <div className="font-black text-[#5c3a21] text-lg uppercase flex items-center">
@@ -589,21 +683,19 @@
           </div>
 
           <div className="flex-1 p-6 overflow-y-auto bg-white">
-            {/* MICRO COMPONENTES DE ABAS CHAMADOS AQUI */}
-            {activeTab === 1 && <TabGerais formData={formData} setFormData={setFormData} updateNested={updateNested} />}
+            {activeTab === 1 && <TabGerais formData={formData} setFormData={setFormData} updateNested={updateNested} handleCoverImageUpload={handleCoverImageUpload} handleEditExistingImage={handleEditExistingImage} />}
             {activeTab === 2 && <TabTecnicos formData={formData} updateNested={updateNested} />}
             {activeTab === 3 && <TabIngredientes formData={formData} updateNested={updateNested} />}
             {activeTab === 4 && <TabConservacao formData={formData} updateNested={updateNested} />}
-            {activeTab === 6 && <TabPreparo formData={formData} setFormData={setFormData} />}
-            {activeTab === 7 && <TabNutricional formData={formData} setFormData={setFormData} updateNested={updateNested} customIngredients={customIngredients} recalcFormulation={recalcFormulation} />}
-            {activeTab === 8 && <TabAprovacao formData={formData} setFormData={setFormData} updateNested={updateNested} />}
+            {activeTab === 5 && <TabPreparo formData={formData} setFormData={setFormData} handleImageUpload={handleImageUpload} handleEditExistingImage={handleEditExistingImage} />}
+            {activeTab === 6 && <TabNutricional formData={formData} setFormData={setFormData} updateNested={updateNested} customIngredients={customIngredients} recalcFormulation={recalcFormulation} />}
+            {activeTab === 7 && <TabAprovacao formData={formData} setFormData={setFormData} updateNested={updateNested} />}
           </div>
         </div>
       );
     };
 
-    // Sub-Componentes do FormView para organização do código
-    const TabGerais = ({ formData, setFormData, updateNested }) => (
+    const TabGerais = ({ formData, setFormData, updateNested, handleCoverImageUpload, handleEditExistingImage }) => (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
          <div className="md:col-span-2 space-y-5">
             <div className="grid grid-cols-2 gap-4">
@@ -628,10 +720,26 @@
             </div>
          </div>
          <div>
-            <label className="text-xs font-bold text-gray-700 uppercase block mb-1">Capa (URL)</label>
-            <input type="text" placeholder="Cole a URL..." value={formData.coverImage} onChange={e => setFormData({...formData, coverImage: e.target.value})} className="w-full p-2 border rounded text-sm mb-2" />
-            <div className="border-2 border-dashed h-56 flex flex-col items-center justify-center bg-gray-50 rounded relative overflow-hidden group">
-               {formData.coverImage ? <img src={formData.coverImage} className="absolute inset-0 w-full h-full object-cover" /> : <div className="text-center text-gray-400 text-sm"><ImageIcon size={32} className="mx-auto mb-2" /> Sem Imagem</div>}
+            <label className="text-xs font-bold text-gray-700 uppercase block mb-1">Capa do Produto</label>
+            <div className="flex gap-2 mb-2">
+              <input type="text" placeholder="URL da imagem..." value={formData.coverImage} onChange={e => setFormData({...formData, coverImage: e.target.value})} className="flex-1 p-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#F4B400] outline-none text-sm" />
+              <label className="bg-gray-200 text-gray-700 px-3 py-2 rounded text-sm font-bold cursor-pointer hover:bg-gray-300 flex items-center shrink-0">
+                <Upload size={16} className="mr-1"/> Local
+                <input type="file" accept="image/*" className="hidden" onChange={handleCoverImageUpload}/>
+              </label>
+            </div>
+            <div className="border-2 border-dashed border-gray-300 h-56 flex flex-col items-center justify-center bg-gray-50 rounded relative overflow-hidden group">
+               {formData.coverImage ? (
+                  <>
+                    <img src={formData.coverImage} className="absolute inset-0 w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 rounded-lg">
+                      <button className="bg-[#F4B400] text-[#5c3a21] px-4 py-2 rounded text-xs font-bold shadow hover:bg-[#d9a000] flex items-center" onClick={() => handleEditExistingImage('cover', formData.coverImage)}><Edit size={16} className="mr-2"/> Editar Foto</button>
+                      <button className="bg-white text-red-600 px-4 py-2 rounded text-xs font-bold shadow hover:bg-gray-100 flex items-center" onClick={() => setFormData({...formData, coverImage: ''})}><Trash2 size={16} className="mr-2"/> Remover Foto</button>
+                    </div>
+                  </>
+               ) : (
+                  <div className="text-center text-gray-400 text-sm"><ImageIcon size={32} className="mx-auto mb-2" /> Sem Imagem</div>
+               )}
             </div>
          </div>
       </div>
@@ -668,21 +776,58 @@
       </div>
     );
 
-    const TabPreparo = ({ formData, setFormData }) => {
+    // ABA DE PREPARO TOTALMENTE RESTAURADA
+    const TabPreparo = ({ formData, setFormData, handleImageUpload, handleEditExistingImage }) => {
+      const [draggedStepIndex, setDraggedStepIndex] = useState(null);
+
       const addStep = () => setFormData({...formData, preparationSteps: [...formData.preparationSteps, { id: Date.now(), title: '', desc: '', image: '' }]});
       const remStep = (id) => setFormData({...formData, preparationSteps: formData.preparationSteps.filter(s => s.id !== id)});
       const updStep = (id, f, v) => setFormData({...formData, preparationSteps: formData.preparationSteps.map(s => s.id === id ? { ...s, [f]: v } : s)});
-      
+
+      const handleDragStart = (index) => setDraggedStepIndex(index);
+      const handleDragOver = (e) => e.preventDefault();
+      const handleDrop = (index) => {
+        if (draggedStepIndex === null || draggedStepIndex === index) return;
+        const newSteps = [...formData.preparationSteps];
+        const draggedItem = newSteps[draggedStepIndex];
+        newSteps.splice(draggedStepIndex, 1);
+        newSteps.splice(index, 0, draggedItem);
+        const renumberedSteps = newSteps.map((step, idx) => ({ ...step, id: idx + 1 }));
+        setFormData({ ...formData, preparationSteps: renumberedSteps });
+        setDraggedStepIndex(null);
+      };
+
       return (
         <div className="space-y-4">
-          <button onClick={addStep} className="bg-[#5c3a21] text-white px-3 py-1.5 rounded text-sm font-bold flex items-center"><Plus size={16}/> Adicionar Etapa</button>
+          <button onClick={addStep} className="bg-[#5c3a21] text-white px-3 py-1.5 rounded text-sm font-bold flex items-center mb-4"><Plus size={16}/> <span className="ml-1">Adicionar Etapa</span></button>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {formData.preparationSteps.map(step => (
-              <div key={step.id} className="border p-3 bg-gray-50 flex shadow-sm rounded relative">
-                <button onClick={() => remStep(step.id)} className="absolute top-2 right-2 text-red-500 bg-white rounded-full p-1 shadow-sm"><Trash2 size={16}/></button>
-                <div className="flex-1 flex flex-col pr-6">
+            {formData.preparationSteps.map((step, index) => (
+              <div 
+                key={step.id} 
+                className={`border p-3 relative bg-gray-50 flex shadow-sm rounded transition-all duration-200 ${draggedStepIndex === index ? 'opacity-40 scale-95 border-[#F4B400]' : ''}`}
+                draggable onDragStart={() => handleDragStart(index)} onDragOver={handleDragOver} onDrop={() => handleDrop(index)}
+              >
+                <div className="absolute top-2 left-2 text-gray-400 hover:text-[#5c3a21] cursor-grab active:cursor-grabbing z-10"><GripVertical size={18} /></div>
+                <button onClick={() => remStep(step.id)} className="absolute top-2 right-2 text-red-500 z-10 bg-white rounded-full p-1 shadow-sm hover:bg-red-50"><Trash2 size={16}/></button>
+                
+                <div className="w-28 h-20 bg-white border border-dashed flex-shrink-0 relative flex items-center justify-center ml-6 mr-3 rounded overflow-hidden group">
+                  {step.image ? (
+                    <>
+                      <img src={step.image} className="w-full h-full object-cover"/>
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity">
+                        <button onClick={() => handleEditExistingImage('step', step.image, step.id)} className="bg-[#F4B400] text-[#5c3a21] p-1.5 rounded shadow hover:bg-[#d9a000]"><Edit size={14}/></button>
+                        <label className="cursor-pointer bg-white text-gray-700 p-1.5 rounded shadow hover:bg-gray-100"><Upload size={14}/><input type="file" className="hidden" onChange={(e) => handleImageUpload(step.id, e)}/></label>
+                        <button onClick={() => updStep(step.id, 'image', '')} className="bg-white text-red-600 p-1.5 rounded shadow hover:bg-gray-100"><Trash2 size={14}/></button>
+                      </div>
+                    </>
+                  ) : (
+                    <label className="cursor-pointer text-[10px] uppercase font-bold text-gray-400 hover:text-[#F4B400] text-center w-full h-full flex flex-col items-center justify-center"><ImageIcon size={18} className="mb-1"/>+ Foto<input type="file" className="hidden" onChange={(e) => handleImageUpload(step.id, e)}/></label>
+                  )}
+                </div>
+
+                <div className="flex-1 flex flex-col">
                   <input type="text" placeholder="Título da Etapa" value={step.title} onChange={e => updStep(step.id, 'title', e.target.value)} className="font-bold text-sm mb-1 bg-transparent border-b outline-none text-[#5c3a21]" />
-                  <textarea placeholder="Descrição..." value={step.desc} onChange={e => updStep(step.id, 'desc', e.target.value)} className="text-xs bg-transparent outline-none flex-1 mt-1 resize-none" rows="3"/>
+                  <textarea placeholder="Descrição do procedimento..." value={step.desc} onChange={e => updStep(step.id, 'desc', e.target.value)} className="text-xs bg-transparent outline-none flex-1 resize-none text-gray-700 mt-1" />
                 </div>
               </div>
             ))}
@@ -777,19 +922,6 @@
             <InputGroup label="Aprovado por" value={formData.approval?.approvedBy || ''} onChange={v => updateNested('approval', 'approvedBy', v)} />
          </div>
       </div>
-    );
-
-    const InputGroup = ({ label, type = "text", value, onChange, placeholder }) => (
-      <div className="flex flex-col space-y-1">
-        <label className="text-[11px] font-bold text-gray-600 uppercase">{label}</label>
-        <input type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="p-2 border rounded text-sm focus:ring-1 focus:ring-[#F4B400] outline-none" />
-      </div>
-    );
-    const NutriRow = ({ label, val, onChange }) => (
-      <tr className="border-b bg-white hover:bg-gray-50">
-        <td className="p-2">{label}</td>
-        <td className="p-2 w-32"><input type="number" step="0.1" value={val} onChange={e => onChange(e.target.value)} className="w-full p-1.5 border rounded outline-none" /></td>
-      </tr>
     );
 
   // ============================================================================
