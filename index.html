@@ -5,10 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema IMAC - Fichas Técnicas</title>
   
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- Import Map para resolver o React e o JSX Runtime do Babel -->
   <script type="importmap">
     {
       "imports": {
@@ -19,10 +17,8 @@
     }
   </script>
 
-  <!-- Babel Standalone (Para rodar React no navegador) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- PDF.js para Extração Automática de Fichas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
   <style>
@@ -87,7 +83,7 @@
     } = Lucide;
 
     // ============================================================================
-    // 1. CONFIGURAÇÃO, CONSTANTES E DADOS MOCKADOS
+    // 1. CONFIGURAÇÃO, CONSTANTES E DADOS
     // ============================================================================
     const firebaseConfig = {
       apiKey: "AIzaSyClLwKGarEcm6g467w-Esi7d7CEgL36mH0", 
@@ -144,11 +140,64 @@
     ];
 
     const parseIMACPdf = (text, filename) => {
-      /* [Código de parser mantido igual ao original] */
       const normalizedText = text.replace(/\s+/g, ' ');
       const getMatch = (regex, fallback = '') => { const m = normalizedText.match(regex); return m ? m[1].trim() : fallback; };
+
       let name = getMatch(/Ficha Técnica\s+(.*?)\s+Unidades por Pacote/i) || filename.replace('.pdf', '');
-      return { ...emptyFicha, name: name, code: 'IMP-' + Math.floor(Math.random()*1000) };
+      const units = getMatch(/Média de (\d+) unidades/i, "0");
+      const packWeight = getMatch(/Peso do Pacote:\s*(.*?)\s+Peso/i, "5 kg");
+      const perTray = getMatch(/por tela:\s*(\d+)\s+unidades/i) || getMatch(/vez na fritadeira:\s*(\d+)\s+unidades/i, "0");
+
+      const tempLastro = getMatch(/(\d+°C)\s*\(lastro\)/i);
+      const tempTurbo = getMatch(/(\d+°C)\s*\(turbo\)/i);
+      const tempFritadeira = getMatch(/Temperatura:\s*(\d+°C)\.?\s+Quantidade/i);
+      const time = getMatch(/Tempo de Assamento:\s*(.*?)\s+Quantidade/i, "");
+      const vapor = getMatch(/Vapor no forno:\s*(Sim|Não)/i, "Não");
+
+      const ovens = [];
+      if (tempLastro) ovens.push({ id: 1, name: 'Forno Lastro', temp: tempLastro, time: time, vapor: vapor });
+      if (tempTurbo) ovens.push({ id: 2, name: 'Forno Turbo', temp: tempTurbo, time: time, vapor: vapor });
+      if (ovens.length === 0 && tempFritadeira) ovens.push({ id: 1, name: 'Fritadeira', temp: tempFritadeira, time: time, vapor: 'Não' });
+
+      let ingredientsText = getMatch(/Ingredientes\s+(.*?)\s+INFORMAÇÃO NUTRICIONAL/i, "");
+      if(!ingredientsText) ingredientsText = getMatch(/Ingredientes\s+(.*?)\s+Informação Nutricional/i, "");
+
+      const containsGluten = /CONTÉM GLÚTEN/i.test(ingredientsText);
+      const containsLactose = /CONTÉM LACTOSE/i.test(ingredientsText);
+      const allergens = getMatch(/ALÉRGICOS:\s*(.*?)(?=\.|$)/i, "");
+
+      const valPacote = getMatch(/Validade do Pacote\s*(\d+\s+dias)/i, "60 dias");
+      const valAssado = getMatch(/Validade Após o Assamento\s*(.*?)\./i) || getMatch(/Validade Após o Assamento\s*(.*?)\s+Ingredientes/i, "Diário");
+      const portionsPkg = getMatch(/Porções por embalagem:\s*(\d+)/i, "100");
+      const portion = getMatch(/Porção:\s*(\d+)g/i, "50");
+      const measure = getMatch(/Porção:\s*\d+g\s*\((.*?)\)/i, "");
+
+      let prepRaw = "";
+      const prepMatch = normalizedText.match(/fornecidos pela por[cç][aã]o[\s\.\*\|"']*(.*?)(?:IMAC Ind[uú]stria|Av\. Cel\. C[ií]cero)/i);
+      if (prepMatch) prepRaw = prepMatch[1].replace(/\|/g, '').trim();
+
+      let prepSteps = [];
+      if (prepRaw) {
+         const tokens = prepRaw.split(/([A-Z0-9À-Ÿ][A-Za-zÀ-ÿ0-9\s\-\.º°]{2,35}:)/g).filter(s => s.trim() !== "");
+         let currentId = 1;
+         for (let i = 0; i < tokens.length; i++) {
+             if (tokens[i].trim().endsWith(':')) {
+                 prepSteps.push({ id: currentId++, title: tokens[i].replace(':', '').trim(), desc: (tokens[i+1] && !tokens[i+1].trim().endsWith(':')) ? tokens[i+1].trim() : '', image: '' });
+             }
+         }
+      }
+
+      if (prepSteps.length === 0 && prepRaw.length > 10) prepSteps.push({ id: 1, title: 'Modo de Preparo', desc: prepRaw, image: '' });
+
+      return {
+        ...emptyFicha,
+        id: '', code: 'IMP-' + Math.floor(Math.random()*1000), name: name, category: 'Importado', version: 1, status: 'draft',
+        technical: { unitsPerPackage: units, packageWeight: packWeight, unitWeight: '', perTray: perTray, ovens: ovens },
+        ingredients: { text: ingredientsText, containsGluten: containsGluten, containsLactose: containsLactose, allergensText: allergens },
+        validity: { package: valPacote, postBaking: valAssado, postDefrost: 'Não recongelar' },
+        preparationSteps: prepSteps, formulation: [],
+        nutritional: { finalYield: '', portionsPerPackage: portionsPkg, portion: portion, measure: measure, kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 }
+      };
     };
 
     // Função auxiliar para evitar problema de dízima no JS
@@ -388,14 +437,12 @@
       const [filterStatus, setFilterStatus] = useState('');
       const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
 
-      // Filtragem
       let filtered = fichas.filter(f => 
         (f.name.toLowerCase().includes(search.toLowerCase()) || f.code.toLowerCase().includes(search.toLowerCase())) &&
         (filterCat ? f.category === filterCat : true) &&
         (filterStatus ? f.status === filterStatus : true)
       );
 
-      // Ordenação
       filtered.sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
         if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
@@ -460,7 +507,7 @@
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? <tr><td colSpan="5" className="text-center py-10 text-gray-500">Nenhuma ficha técnica encontrada.</td></tr> : filtered.map(f => (
+                {filtered.length === 0 ? <tr><td colSpan="5" className="text-center py-10 text-gray-500">Nenhuma ficha encontrada.</td></tr> : filtered.map(f => (
                   <tr key={f.id} className="border-b hover:bg-[#fffdf5]">
                     <td className="px-6 py-4 font-medium flex items-center space-x-4">
                         {f.coverImage ? <img src={f.coverImage} className="w-10 h-10 rounded object-cover border" /> : <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center"><ImageIcon size={16} className="text-gray-400"/></div>}
@@ -489,10 +536,26 @@
     };
 
     // ============================================================================
-    // 4. TELA DE EDIÇÃO (FormView) COM AUTO-SAVE E VERSIONAMENTO
+    // 4. TELA DE EDIÇÃO (FormView) E SEUS SUB-COMPONENTES
     // ============================================================================
     
-    // COMPONENTE DE EDIÇÃO DE IMAGEM RESTAURADO
+    // COMPONENTE PARA INPUTS (FUNDAMENTAL PARA NÃO DAR TELA BRANCA)
+    const InputGroup = ({ label, type = "text", value, onChange, placeholder }) => (
+      <div className="flex flex-col space-y-1">
+        <label className="text-[11px] font-bold text-gray-600 uppercase">{label}</label>
+        <input type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="p-2 border rounded text-sm focus:ring-1 focus:ring-[#F4B400] outline-none" />
+      </div>
+    );
+
+    // COMPONENTE PARA LINHA NUTRICIONAL (FUNDAMENTAL PARA NÃO DAR TELA BRANCA)
+    const NutriRow = ({ label, val, onChange }) => (
+      <tr className="border-b bg-white hover:bg-gray-50">
+        <td className="p-2">{label}</td>
+        <td className="p-2 w-32"><input type="number" step="0.1" value={val} onChange={e => onChange(e.target.value)} className="w-full p-1.5 border rounded outline-none" /></td>
+      </tr>
+    );
+
+    // COMPONENTE DE EDIÇÃO DE IMAGEM
     const ImageEditorModal = ({ src, onSave, onCancel, showMessage }) => {
       const canvasRef = useRef(null);
       const [scale, setScale] = useState(1);
@@ -558,10 +621,30 @@
 
     const FormView = ({ ficha, customIngredients, onBack, onSave, showMessage, showConfirm, addToast }) => {
       const [activeTab, setActiveTab] = useState(1);
-      const [formData, setFormData] = useState({ formulation: [], ...JSON.parse(JSON.stringify(ficha)) });
+      
+      // BLINDAGEM DE DADOS: Mesclando estrutura base vazia com a ficha carregada
+      // para garantir que mesmo fichas velhas tenham 'general', 'technical', etc., evitando tela branca
+      const [formData, setFormData] = useState(() => {
+          const base = JSON.parse(JSON.stringify(ficha || emptyFicha));
+          return {
+            ...emptyFicha,
+            ...base,
+            general: { ...emptyFicha.general, ...(base.general || {}) },
+            technical: { ...emptyFicha.technical, ...(base.technical || {}) },
+            ingredients: { ...emptyFicha.ingredients, ...(base.ingredients || {}) },
+            conservation: { ...emptyFicha.conservation, ...(base.conservation || {}) },
+            validity: { ...emptyFicha.validity, ...(base.validity || {}) },
+            nutritional: { ...emptyFicha.nutritional, ...(base.nutritional || {}) },
+            approval: { ...emptyFicha.approval, ...(base.approval || {}) },
+            preparationSteps: base.preparationSteps || [],
+            formulation: base.formulation || [],
+            revisionHistory: base.revisionHistory || []
+          };
+      });
+
       const [editorState, setEditorState] = useState({ isOpen: false, src: null, type: null, stepId: null });
 
-      // NUMERAÇÃO CORRIGIDA 1 A 7
+      // Numeração corrigida
       const tabs = [{ id: 1, label: 'Gerais' }, { id: 2, label: 'Técnicos' }, { id: 3, label: 'Ingredientes' }, { id: 4, label: 'Conserv./Valid.' }, { id: 5, label: 'Preparo' }, { id: 6, label: 'Nutricional' }, { id: 7, label: 'Aprovação' }];
 
       const updateNested = (cat, field, val) => setFormData(p => ({ ...p, [cat]: { ...p[cat], [field]: val } }));
@@ -589,7 +672,6 @@
          onSave(dataToSave, message);
       };
 
-      // Funções de Imagem Restauradas
       const handleImageUpload = (id, e) => {
         const file = e.target.files[0];
         if (file) {
@@ -776,7 +858,6 @@
       </div>
     );
 
-    // ABA DE PREPARO TOTALMENTE RESTAURADA
     const TabPreparo = ({ formData, setFormData, handleImageUpload, handleEditExistingImage }) => {
       const [draggedStepIndex, setDraggedStepIndex] = useState(null);
 
@@ -924,8 +1005,8 @@
       </div>
     );
 
-  // ============================================================================
-    // 5. INGREDIENTES E VISUALIZAÇÃO PDF (CÓDIGO ORIGINAL RESTAURADO)
+    // ============================================================================
+    // 5. INGREDIENTES E VISUALIZAÇÃO PDF
     // ============================================================================
     const IngredientsView = ({ ingredients, onSave, onDelete, showMessage }) => {
       const [search, setSearch] = useState('');
@@ -1061,7 +1142,8 @@
 
       return (
         <div className="w-full flex flex-col items-center pb-20">
-          <div className="no-print w-full max-w-[210mm] bg-white p-4 rounded-xl shadow border mb-6 flex justify-between items-center sticky top-4 z-50">
+          {/* BOTÕES DE IMPRESSÃO - REMOVIDO O 'sticky' PARA NÃO DESCER MAIS! */}
+          <div className="no-print w-full max-w-[210mm] bg-white p-4 rounded-xl shadow border mb-6 flex justify-between items-center">
             <button onClick={onBack} className="flex items-center space-x-2 text-sm"><ArrowLeft size={16} /> <span>Voltar à Edição</span></button>
             <button onClick={() => window.print()} className="bg-[#5c3a21] text-[#F4B400] px-6 py-2 rounded font-black uppercase text-sm flex items-center space-x-2"><Printer size={18} /> <span>Imprimir A4</span></button>
           </div>
