@@ -792,36 +792,334 @@
       </tr>
     );
 
-    // ============================================================================
-    // 5. INGREDIENTES E VISUALIZAÇÃO PDF
+  // ============================================================================
+    // 5. INGREDIENTES E VISUALIZAÇÃO PDF (CÓDIGO ORIGINAL RESTAURADO)
     // ============================================================================
     const IngredientsView = ({ ingredients, onSave, onDelete, showMessage }) => {
-       /* Componente simplificado por brevidade, idêntico na lógica ao FormView */
-       return <div className="p-6 bg-white rounded border shadow text-center py-20 text-gray-500">Aba de Ingredientes Próprios Mantida (Requer expansão modal similar).</div>
+      const [search, setSearch] = useState('');
+      const [isModalOpen, setIsModalOpen] = useState(false);
+      const [editingIng, setEditingIng] = useState(null);
+
+      const emptyIng = { name: '', supplier: '', referencePortion: 100, kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 };
+
+      const filtered = ingredients.filter(i => i.name.toLowerCase().includes(search.toLowerCase()) || (i.supplier && i.supplier.toLowerCase().includes(search.toLowerCase())));
+
+      const openModal = (ing = emptyIng) => {
+        setEditingIng({ ...ing });
+        setIsModalOpen(true);
+      };
+
+      const handleSave = () => {
+        if (!editingIng.name || editingIng.referencePortion <= 0) {
+          showMessage("Aviso", "O nome é obrigatório e a porção deve ser maior que 0.");
+          return;
+        }
+        onSave(editingIng);
+        setIsModalOpen(false);
+      };
+
+      return (
+        <div className="space-y-6 max-w-7xl mx-auto h-full flex flex-col pb-10">
+          
+          {isModalOpen && (
+            <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90%] flex flex-col overflow-hidden">
+                <div className="bg-[#5c3a21] text-white p-4 flex justify-between items-center">
+                  <h3 className="font-bold flex items-center"><Package size={18} className="mr-2"/> {editingIng.id ? 'Editar Ingrediente' : 'Novo Ingrediente (Rótulo)'}</h3>
+                  <button onClick={() => setIsModalOpen(false)} className="hover:text-[#F4B400]"><X size={20}/></button>
+                </div>
+                <div className="p-4 bg-yellow-50 border-b border-yellow-200 text-sm text-[#5c3a21]">
+                  <p>Cadastre os dados nutricionais exatamente como constam na <strong>tabela da embalagem do seu fornecedor</strong>.</p>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
+                  <div className="grid grid-cols-2 gap-4">
+                    <InputGroup label="Nome do Ingrediente" value={editingIng.name} onChange={v => setEditingIng({...editingIng, name: v})} placeholder="Ex: Farinha de Trigo Especial" />
+                    <InputGroup label="Fornecedor / Marca" value={editingIng.supplier} onChange={v => setEditingIng({...editingIng, supplier: v})} placeholder="Ex: Moinho X" />
+                  </div>
+                  
+                  <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
+                     <h4 className="font-bold text-[#5c3a21] border-b border-gray-200 pb-2 mb-4">Valores Nutricionais da Embalagem</h4>
+                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <InputGroup type="number" label="Porção na Embalagem (g)" value={editingIng.referencePortion} onChange={v => setEditingIng({...editingIng, referencePortion: v})} placeholder="Ex: 50" />
+                        <InputGroup type="number" label="Valor Energético (Kcal)" value={editingIng.kcal} onChange={v => setEditingIng({...editingIng, kcal: v})} />
+                        <InputGroup type="number" label="Carboidratos (g)" value={editingIng.carbs} onChange={v => setEditingIng({...editingIng, carbs: v})} />
+                        <InputGroup type="number" label="Açúcares Totais (g)" value={editingIng.totalSugars} onChange={v => setEditingIng({...editingIng, totalSugars: v})} />
+                        <InputGroup type="number" label="Açúcares Adicion. (g)" value={editingIng.addedSugars} onChange={v => setEditingIng({...editingIng, addedSugars: v})} />
+                        <InputGroup type="number" label="Proteínas (g)" value={editingIng.proteins} onChange={v => setEditingIng({...editingIng, proteins: v})} />
+                        <InputGroup type="number" label="Gorduras Totais (g)" value={editingIng.totalFats} onChange={v => setEditingIng({...editingIng, totalFats: v})} />
+                        <InputGroup type="number" label="Gorduras Saturadas (g)" value={editingIng.satFats} onChange={v => setEditingIng({...editingIng, satFats: v})} />
+                        <InputGroup type="number" label="Gorduras Trans (g)" value={editingIng.transFats} onChange={v => setEditingIng({...editingIng, transFats: v})} />
+                        <InputGroup type="number" label="Fibra Alimentar (g)" value={editingIng.fiber} onChange={v => setEditingIng({...editingIng, fiber: v})} />
+                        <InputGroup type="number" label="Sódio (mg)" value={editingIng.sodium} onChange={v => setEditingIng({...editingIng, sodium: v})} />
+                     </div>
+                  </div>
+                </div>
+                <div className="p-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
+                   <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded">Cancelar</button>
+                   <button onClick={handleSave} className="bg-[#5c3a21] text-white px-6 py-2 rounded shadow font-bold hover:bg-[#4a2e1a]">Salvar Ingrediente</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+            <div className="relative w-72">
+              <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+              <input type="text" placeholder="Buscar ingrediente..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F4B400] outline-none text-sm" />
+            </div>
+            <button onClick={() => openModal()} className="bg-[#F4B400] hover:bg-[#d9a000] text-[#5c3a21] font-bold px-5 py-2 rounded-lg shadow flex items-center space-x-2">
+              <Plus size={18} /> <span>Novo Ingrediente</span>
+            </button>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex-1 overflow-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-[#5c3a21] text-white uppercase font-bold text-xs sticky top-0 z-10">
+                <tr>
+                  <th className="px-6 py-4">Ingrediente</th>
+                  <th className="px-6 py-4">Fornecedor</th>
+                  <th className="px-6 py-4">Porção Ref.</th>
+                  <th className="px-6 py-4 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? <tr><td colSpan="4" className="text-center py-10 text-gray-500">Nenhum ingrediente cadastrado.</td></tr> : filtered.map(ing => (
+                  <tr key={ing.id} className="border-b border-gray-100 hover:bg-[#fffdf5]">
+                    <td className="px-6 py-4 font-bold text-[#5c3a21]">{ing.name}</td>
+                    <td className="px-6 py-4 text-gray-600">{ing.supplier || '-'}</td>
+                    <td className="px-6 py-4 text-gray-600">{ing.referencePortion}g</td>
+                    <td className="px-6 py-4 text-right space-x-1">
+                      <button onClick={() => openModal(ing)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"><Edit size={18} /></button>
+                      <button onClick={() => onDelete(ing.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 size={18} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    };
+
+    const NutriPrintRow = ({ label, val, vd, borderBottom = true, portion }) => {
+      const numVal = parseFloat(val) || 0;
+      const numPortion = parseFloat(portion) || 1;
+      const val100 = portion ? Number(((numVal / numPortion) * 100).toFixed(1)).toString().replace('.0', '') : 0;
+      const displayVal = Number(numVal.toFixed(1)).toString().replace('.0', '');
+
+      return (
+        <tr className={borderBottom ? "border-b border-black" : ""}>
+          <td className="py-0.5 px-1 border-r border-black">{label}</td>
+          <td className="py-0.5 px-1 text-center border-r border-black">{val100}</td>
+          <td className="py-0.5 px-1 text-center border-r border-black">{displayVal}</td>
+          <td className="py-0.5 px-1 text-center">{vd}</td>
+        </tr>
+      );
     };
 
     const PDFView = ({ ficha, onBack, companySettings }) => {
       if (!ficha) return null;
+
+      const PrintFooter = () => (
+        <footer className="mt-4 border-t-2 border-black pt-2 text-center text-[9px] text-black font-medium leading-tight avoid-break">
+          <p className="font-black text-[10px] text-[#5c3a21]">{companySettings.name}</p>
+          <p>{companySettings.address} - Telefone: {companySettings.phone}</p>
+        </footer>
+      );
+
       return (
         <div className="w-full flex flex-col items-center pb-20">
-          <div className="no-print w-full max-w-[210mm] bg-white p-4 rounded-xl shadow border mb-6 flex justify-between sticky top-4 z-50">
-            <button onClick={onBack} className="flex items-center space-x-2 text-sm"><ArrowLeft size={16} /> Voltar</button>
+          <div className="no-print w-full max-w-[210mm] bg-white p-4 rounded-xl shadow border mb-6 flex justify-between items-center sticky top-4 z-50">
+            <button onClick={onBack} className="flex items-center space-x-2 text-sm"><ArrowLeft size={16} /> <span>Voltar à Edição</span></button>
             <button onClick={() => window.print()} className="bg-[#5c3a21] text-[#F4B400] px-6 py-2 rounded font-black uppercase text-sm flex items-center space-x-2"><Printer size={18} /> <span>Imprimir A4</span></button>
           </div>
-          <div className="pdf-container shadow-2xl bg-white border border-gray-200">
-             <header className="flex justify-between items-end border-b-2 border-[#F4B400] pb-2 mb-4">
+          
+          <div className="pdf-container shadow-2xl relative bg-white">
+            
+            {/* ================= PÁGINA 1: FICHA TÉCNICA PRINCIPAL ================= */}
+            <div>
+              <header className="flex justify-between items-end border-b-2 border-[#F4B400] pb-2 mb-3">
                 <div className="flex items-center space-x-3">
-                   {companySettings.logo && <img src={companySettings.logo} className="h-10 max-w-[150px] object-contain" />}
-                   <div className="pl-3 border-l-2 border-gray-300"><p className="text-[9px] uppercase font-black text-gray-700">Controle de Qualidade</p></div>
+                   <div className="relative flex items-center mr-2">{(companySettings.fichaLogo || companySettings.logo) ? <img src={companySettings.fichaLogo || companySettings.logo} className="h-10 max-w-[150px] object-contain" /> : <ImacLogoSVG className="h-10" />}</div>
+                   <div className="pl-3 border-l-2 border-gray-300"><p className="text-[9px] uppercase font-black text-gray-700 tracking-wider">Indústria de Massas Congeladas</p><p className="font-bold text-sm text-black leading-none">Controle de Qualidade</p></div>
                 </div>
-                <div className="text-right"><h1 className="text-lg font-black uppercase inline-block border-b-2 border-black">Ficha Técnica</h1><h2 className="text-xl font-black text-[#5c3a21]">{ficha.name}</h2></div>
-             </header>
-             
-             {/* O conteúdo principal do PDF se mantém o mesmo da versão original */}
-             <div className="text-center p-10 font-bold text-gray-400 border-2 border-dashed mt-10">
-                [ Layout Pixel Perfect Renderizado Aqui - Estrutura Original Mantida ]
-             </div>
+                <div className="text-right"><h1 className="text-lg font-black text-black uppercase tracking-widest border-b-2 border-black inline-block mb-0.5">Ficha Técnica</h1><h2 className="text-xl font-black text-[#5c3a21] leading-none">{ficha.name}</h2></div>
+              </header>
+              
+              <div className="block mb-2">
+                <div className="grid grid-cols-[1fr_1.3fr] gap-5 mb-2">
+                  <div className="space-y-3">
+                    <div className="border-[3px] border-[#F4B400] rounded-lg overflow-hidden h-44 w-full">
+                       {ficha.coverImage ? <img src={ficha.coverImage} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-xs">Sem Imagem</div>}
+                    </div>
+                    
+                    <div className="bg-white rounded border border-gray-200 p-2 text-[10px] space-y-1.5 shadow-sm text-gray-800 leading-tight">
+                      <p><span className="font-bold text-black">Unidades por Pacote:</span> Média de {ficha.technical?.unitsPerPackage || 0} un.</p>
+                      <p><span className="font-bold text-black">Peso do Pacote:</span> {ficha.technical?.packageWeight || '-'}</p>
+                      <p><span className="font-bold text-black">Qtd por tela:</span> {ficha.technical?.perTray || 0} un.</p>
+                      
+                      <div className="border-t border-gray-200 pt-1.5 mt-1.5">
+                        <span className="font-bold text-black block mb-0.5">Parâmetros de Assamento:</span>
+                        {(!ficha.technical?.ovens || ficha.technical.ovens.length === 0) ? (
+                            <p className="text-gray-500 italic text-[9px]">Não informado</p>
+                        ) : (
+                            <div className="space-y-1">
+                            {ficha.technical.ovens.map((oven, i) => (
+                                <div key={i} className="bg-gray-50 p-1 rounded border border-gray-200 text-[9px] leading-tight">
+                                    <span className="font-bold text-[#5c3a21]">{oven.name}:</span> {oven.temp} | {oven.time} | Vapor: {oven.vapor}
+                                </div>
+                            ))}
+                            </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="font-black text-black bg-[#F4B400] px-2 py-1 text-center text-[10px] uppercase rounded-t border-b-2 border-[#5c3a21]">Armazenamento e Validade</h3>
+                      <div className="border border-black bg-white p-2 text-[9px] text-gray-800 space-y-1.5 shadow-sm">
+                        <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">ARMAZENAMENTO (TEMP.):</span> <span>{ficha.conservation?.frozen || '-'}</span></p>
+                        <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">VALIDADE (EMB. FECHADA):</span> <span>{ficha.validity?.package || '-'}</span></p>
+                        <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">VALIDADE (EMB. ABERTA):</span> <span>{ficha.conservation?.openPackage || '-'}</span></p>
+                        <p className="flex justify-between pb-0.5"><span className="font-bold text-black">VALIDADE (APÓS PREPARO):</span> <span>{ficha.validity?.postBaking || '-'}</span></p>
+                      </div>
+                    </div>
+                  </div>
 
+                  <div className="space-y-3">
+                    <section>
+                      <h3 className="text-[13px] font-black text-[#5c3a21] border-b border-black pb-0.5 mb-1">Ingredientes</h3>
+                      <p className="text-[10px] text-justify leading-snug">{ficha.ingredients?.text || '-'}</p>
+                      <p className="mt-1 text-[9px] font-black uppercase leading-tight bg-gray-100 p-1.5 rounded">{ficha.ingredients?.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients?.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients?.allergensText && `ALÉRGICOS: ${ficha.ingredients.allergensText}`}</p>
+                    </section>
+                    
+                    <section className="avoid-break flex justify-start">
+                      <div className="w-[80%] font-sans text-black">
+                        <table className="w-full text-[9px] border-collapse border border-black">
+                          <thead>
+                            <tr>
+                              <th colSpan="4" className="text-[11px] font-black pt-0.5 pb-0.5 text-center border-b border-black">INFORMAÇÃO NUTRICIONAL</th>
+                            </tr>
+                            <tr>
+                              <th colSpan="4" className="font-normal text-left px-1 py-0.5 text-[9px] leading-tight border-b border-black">
+                                Porções por embalagem: {ficha.nutritional?.portionsPerPackage || 100}<br/>
+                                Porção: {ficha.nutritional?.portion || 0}g ({ficha.nutritional?.measure || '-'})
+                              </th>
+                            </tr>
+                            <tr className="border-b border-black font-black text-center bg-gray-50">
+                              <td className="py-0.5 px-1 text-left border-r border-black w-[45%]"></td>
+                              <td className="py-0.5 px-1 border-r border-black w-[18%]">100 g</td>
+                              <td className="py-0.5 px-1 border-r border-black w-[18%]">{ficha.nutritional?.portion || 0} g</td>
+                              <td className="py-0.5 px-1 w-[19%]">% VD*</td>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <NutriPrintRow label="Valor energético (kcal)" val={ficha.nutritional?.kcal || 0} vd={Math.round(((ficha.nutritional?.kcal || 0) / 2000) * 100)} portion={ficha.nutritional?.portion} />
+                            <NutriPrintRow label="Carboidratos (g)" val={ficha.nutritional?.carbs || 0} vd={Math.round(((ficha.nutritional?.carbs || 0) / 300) * 100)} portion={ficha.nutritional?.portion} />
+                            <NutriPrintRow label="Açúcares totais (g)" val={ficha.nutritional?.totalSugars || 0} vd="-" portion={ficha.nutritional?.portion} />
+                            <NutriPrintRow label="Açúcares adicionados (g)" val={ficha.nutritional?.addedSugars || 0} vd={Math.round(((ficha.nutritional?.addedSugars || 0) / 50) * 100)} portion={ficha.nutritional?.portion} />
+                            <NutriPrintRow label="Proteínas (g)" val={ficha.nutritional?.proteins || 0} vd={Math.round(((ficha.nutritional?.proteins || 0) / 50) * 100)} portion={ficha.nutritional?.portion} />
+                            <NutriPrintRow label="Gorduras totais (g)" val={ficha.nutritional?.totalFats || 0} vd={Math.round(((ficha.nutritional?.totalFats || 0) / 65) * 100)} portion={ficha.nutritional?.portion} />
+                            <NutriPrintRow label="Gorduras saturadas (g)" val={ficha.nutritional?.satFats || 0} vd={Math.round(((ficha.nutritional?.satFats || 0) / 20) * 100)} portion={ficha.nutritional?.portion} />
+                            <NutriPrintRow label="Gorduras trans (g)" val={ficha.nutritional?.transFats || 0} vd="-" portion={ficha.nutritional?.portion} />
+                            <NutriPrintRow label="Fibra alimentar (g)" val={ficha.nutritional?.fiber || 0} vd={Math.round(((ficha.nutritional?.fiber || 0) / 25) * 100)} portion={ficha.nutritional?.portion} />
+                            <NutriPrintRow label="Sódio (mg)" val={ficha.nutritional?.sodium || 0} vd={Math.round(((ficha.nutritional?.sodium || 0) / 2000) * 100)} portion={ficha.nutritional?.portion} borderBottom={false} />
+                          </tbody>
+                        </table>
+                        <p className="text-[7px] mt-0.5 text-black">*Percentual de valores diários fornecidos pela porção.</p>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+                
+                {ficha.preparationSteps && ficha.preparationSteps.length > 0 && (
+                  <section className="mt-2 pt-2 border-t border-gray-200 avoid-break">
+                    <h3 className="text-[13px] font-black text-[#5c3a21] border-b border-black pb-0.5 mb-2">Modo de Preparo</h3>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                      {ficha.preparationSteps.map((step, idx) => (
+                        <div key={idx} className="relative avoid-break">
+                          <div className="font-black text-[11px] text-[#5c3a21] mb-0.5 leading-none"><span className="text-[#F4B400] text-sm mr-1">•</span>{step.title}:</div>
+                          {step.image && (<div className="w-full h-28 mb-1 bg-gray-100 rounded overflow-hidden border border-gray-200"><img src={step.image} className="w-full h-full object-cover" /></div>)}
+                          <p className="text-[10px] text-justify leading-tight text-gray-800">{step.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </div>
+              <PrintFooter />
+            </div>
+
+            {/* ================= PÁGINA 2: CONTROLE DE REVISÕES E APROVAÇÃO ================= */}
+            {(ficha.revisionHistory?.length > 0 || ficha.approval?.show) && (
+              <div className="page-break pt-6 flex flex-col h-full min-h-[200mm]">
+                  <header className="flex justify-between items-end border-b-2 border-gray-300 pb-2 mb-6 opacity-60">
+                    <div className="flex items-center space-x-3">
+                       <div className="relative flex items-center">
+                          {(companySettings.fichaLogo || companySettings.logo) ? (
+                              <img src={companySettings.fichaLogo || companySettings.logo} className="h-8 max-w-[120px] object-contain" />
+                          ) : (
+                              <ImacLogoSVG className="h-8 grayscale" />
+                          )}
+                       </div>
+                       <div className="pl-3 border-l border-gray-300"><p className="text-[8px] uppercase font-black text-gray-700 tracking-wider">Ficha Técnica: {ficha.code}</p></div>
+                    </div>
+                    <div className="text-right text-[9px] font-bold text-gray-500">Página 2 - Anexos Administrativos</div>
+                  </header>
+
+                  <div className="flex-1">
+                      {ficha.revisionHistory?.length > 0 && (
+                          <div className="mb-6">
+                              <h3 className="text-[13px] font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Histórico de Revisões</h3>
+                              <table className="w-full text-[9px] border-collapse border border-black">
+                                  <thead>
+                                      <tr className="bg-gray-100">
+                                          <th className="border border-black p-1 text-center w-16">Data</th>
+                                          <th className="border border-black p-1 text-center w-10">Versão</th>
+                                          <th className="border border-black p-1 text-left">Motivos / Alterações</th>
+                                          <th className="border border-black p-1 text-center w-24">Elaborador</th>
+                                          <th className="border border-black p-1 text-center w-24">Revisor</th>
+                                          <th className="border border-black p-1 text-center w-24">Aprovador</th>
+                                      </tr>
+                                  </thead>
+                                  <tbody>
+                                      {ficha.revisionHistory.map(rev => (
+                                          <tr key={rev.id}>
+                                              <td className="border border-black p-1 text-center">{rev.date}</td>
+                                              <td className="border border-black p-1 text-center font-bold">v{rev.version}.0</td>
+                                              <td className="border border-black p-1">{rev.notes}</td>
+                                              <td className="border border-black p-1 text-center">{rev.createdBy}</td>
+                                              <td className="border border-black p-1 text-center">{rev.reviewedBy}</td>
+                                              <td className="border border-black p-1 text-center">{rev.approvedBy}</td>
+                                          </tr>
+                                      ))}
+                                  </tbody>
+                              </table>
+                          </div>
+                      )}
+
+                      {ficha.approval?.show && (
+                          <div className="border border-black p-3 bg-white mt-4 relative avoid-break">
+                              <div className="text-[9px] font-bold mb-8 flex justify-between border-b pb-1">
+                                  <span className="uppercase text-[#5c3a21]">Controle de Aprovação e Assinaturas</span>
+                                  <span className="text-gray-600">Emissão: {new Date().toLocaleString('pt-BR')}</span>
+                              </div>
+                              <div className="grid grid-cols-3 gap-6 text-center text-[9px] mt-8 pb-2">
+                                  <div>
+                                      <div className="border-t border-black pt-1 mx-4 font-bold text-gray-800">{ficha.approval.createdBy || 'Elaborado por'}</div>
+                                  </div>
+                                  <div>
+                                      <div className="border-t border-black pt-1 mx-4 font-bold text-gray-800">{ficha.approval.reviewedBy || 'Revisado por'}</div>
+                                  </div>
+                                  <div>
+                                      <div className="border-t border-black pt-1 mx-4 font-bold text-gray-800">{ficha.approval.approvedBy || 'Aprovado por'}</div>
+                                  </div>
+                              </div>
+                          </div>
+                      )}
+                  </div>
+                  <PrintFooter />
+              </div>
+            )}
           </div>
         </div>
       );
