@@ -76,7 +76,7 @@
     import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
     const {
-      LayoutDashboard, FileText, Users, Settings, Plus, Search, Filter,
+      LayoutDashboard, FileText, Plus, Search, Filter,
       Edit, Printer, CheckCircle, Info, Database, Upload, Trash2, ArrowLeft,
       Building, MapPin, Phone, Mail, X, Image: ImageIcon, Save, Calculator, Package,
       Copy, GripVertical, AlertTriangle, HelpCircle, Download, ChevronUp, ChevronDown, SaveAll, Check
@@ -98,17 +98,8 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    const ImacLogoSVG = ({ className = "h-12" }) => (
-      <svg className={className} viewBox="0 0 160 65" xmlns="http://www.w3.org/2000/svg">
-        <text x="0" y="55" fontFamily="Arial, Helvetica, sans-serif" fontWeight="900" fontSize="50" fill="#5c3a21" letterSpacing="-2">IMAC</text>
-        <g transform="translate(108, -5) scale(0.65)">
-           <circle cx="50" cy="50" r="35" fill="#F4B400" />
-           <path d="M 35 45 Q 40 36 45 45" stroke="white" strokeWidth="6" strokeLinecap="round" fill="none" />
-           <path d="M 55 45 Q 60 36 65 45" stroke="white" strokeWidth="6" strokeLinecap="round" fill="none" />
-           <path d="M 30 55 Q 50 75 70 50" stroke="white" strokeWidth="6" strokeLinecap="round" fill="none" />
-        </g>
-      </svg>
-    );
+    // Caminho da logo referenciando o diretório local do projeto
+    const LOGO_URL = "./logo.png";
 
     const emptyFicha = {
       id: '', code: '', name: '', category: '', version: 1, status: 'draft', coverImage: '', general: { brand: 'IMAC', description: '' },
@@ -230,14 +221,13 @@
         setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
       };
 
-      // Configurações
-      const getInitialSettings = () => {
-        const savedSettings = localStorage.getItem('imac_company_settings');
-        if (savedSettings) try { return JSON.parse(savedSettings); } catch (e) {}
-        return { name: 'IMAC Indústria de Massas Congeladas', address: 'Av. Cel. Cícero Sá, 4000', phone: '(85) 3878-1249', email: 'qualidade@imac.com', logo: '', fichaLogo: '' };
+      // Configurações mantidas apenas para o rodapé (sem edição na interface)
+      const companySettings = { 
+        name: 'IMAC Indústria de Massas Congeladas', 
+        address: 'Av. Cel. Cícero Sá, 4000', 
+        phone: '(85) 3878-1249', 
+        email: 'qualidade@imac.com' 
       };
-      const [companySettings, setCompanySettings] = useState(getInitialSettings);
-      useEffect(() => localStorage.setItem('imac_company_settings', JSON.stringify(companySettings)), [companySettings]);
 
       // Autenticação e Firestore
       useEffect(() => {
@@ -364,16 +354,18 @@
             <div className="p-4 flex items-center justify-center h-20 border-b border-[#4a2e1a]">
               <div className="flex items-center space-x-2 font-black cursor-pointer" onClick={() => setCurrentView('dashboard')}>
                  {sidebarOpen ? (
-                    companySettings.logo ? <div className="bg-white py-1 px-2 rounded-lg shadow-md flex justify-center"><img src={companySettings.logo} className="h-10 max-w-[180px] object-contain" /></div> : <div className="bg-white py-1 px-2 rounded-lg shadow-md flex justify-center"><ImacLogoSVG className="h-10" /></div>
-                 ) : <div className="w-10 h-10 bg-[#F4B400] rounded-full flex items-center justify-center text-[#5c3a21] text-sm font-black shadow-md">IM</div>}
+                    <div className="bg-white py-1 px-2 rounded-lg shadow-md flex justify-center">
+                        <img src={LOGO_URL} alt="Logo IMAC" className="h-10 max-w-[180px] object-contain" />
+                    </div>
+                 ) : (
+                    <div className="w-10 h-10 bg-[#F4B400] rounded-full flex items-center justify-center text-[#5c3a21] text-sm font-black shadow-md">IM</div>
+                 )}
               </div>
             </div>
             <nav className="flex-1 py-6 space-y-2 px-3 overflow-y-auto">
               <NavItem icon={<LayoutDashboard size={20}/>} label="Dashboard" active={currentView === 'dashboard'} onClick={() => setCurrentView('dashboard')} open={sidebarOpen} />
               <NavItem icon={<FileText size={20}/>} label="Fichas Técnicas" active={currentView === 'list'} onClick={() => setCurrentView('list')} open={sidebarOpen} />
               <NavItem icon={<Package size={20}/>} label="Ingredientes" active={currentView === 'ingredients'} onClick={() => setCurrentView('ingredients')} open={sidebarOpen} />
-              <NavItem icon={<Users size={20}/>} label="Utilizadores" active={currentView === 'users'} onClick={() => setCurrentView('users')} open={sidebarOpen} />
-              <NavItem icon={<Settings size={20}/>} label="Configurações" active={currentView === 'settings'} onClick={() => setCurrentView('settings')} open={sidebarOpen} />
             </nav>
             <div className="p-4 border-t border-[#4a2e1a] text-sm text-[#F4B400] flex justify-center cursor-pointer hover:bg-[#4a2e1a]" onClick={() => setSidebarOpen(!sidebarOpen)}>
               {sidebarOpen ? "« Recolher Menu" : "»"}
@@ -1142,7 +1134,6 @@
 
       return (
         <div className="w-full flex flex-col items-center pb-20">
-          {/* BOTÕES DE IMPRESSÃO - REMOVIDO O 'sticky' PARA NÃO DESCER MAIS! */}
           <div className="no-print w-full max-w-[210mm] bg-white p-4 rounded-xl shadow border mb-6 flex justify-between items-center">
             <button onClick={onBack} className="flex items-center space-x-2 text-sm"><ArrowLeft size={16} /> <span>Voltar à Edição</span></button>
             <button onClick={() => window.print()} className="bg-[#5c3a21] text-[#F4B400] px-6 py-2 rounded font-black uppercase text-sm flex items-center space-x-2"><Printer size={18} /> <span>Imprimir A4</span></button>
@@ -1154,7 +1145,9 @@
             <div>
               <header className="flex justify-between items-end border-b-2 border-[#F4B400] pb-2 mb-3">
                 <div className="flex items-center space-x-3">
-                   <div className="relative flex items-center mr-2">{(companySettings.fichaLogo || companySettings.logo) ? <img src={companySettings.fichaLogo || companySettings.logo} className="h-10 max-w-[150px] object-contain" /> : <ImacLogoSVG className="h-10" />}</div>
+                   <div className="relative flex items-center mr-2">
+                       <img src={LOGO_URL} className="h-10 max-w-[150px] object-contain" alt="Logo" />
+                   </div>
                    <div className="pl-3 border-l-2 border-gray-300"><p className="text-[9px] uppercase font-black text-gray-700 tracking-wider">Indústria de Massas Congeladas</p><p className="font-bold text-sm text-black leading-none">Controle de Qualidade</p></div>
                 </div>
                 <div className="text-right"><h1 className="text-lg font-black text-black uppercase tracking-widest border-b-2 border-black inline-block mb-0.5">Ficha Técnica</h1><h2 className="text-xl font-black text-[#5c3a21] leading-none">{ficha.name}</h2></div>
@@ -1269,11 +1262,7 @@
                   <header className="flex justify-between items-end border-b-2 border-gray-300 pb-2 mb-6 opacity-60">
                     <div className="flex items-center space-x-3">
                        <div className="relative flex items-center">
-                          {(companySettings.fichaLogo || companySettings.logo) ? (
-                              <img src={companySettings.fichaLogo || companySettings.logo} className="h-8 max-w-[120px] object-contain" />
-                          ) : (
-                              <ImacLogoSVG className="h-8 grayscale" />
-                          )}
+                           <img src={LOGO_URL} className="h-8 max-w-[120px] object-contain" alt="Logo" />
                        </div>
                        <div className="pl-3 border-l border-gray-300"><p className="text-[8px] uppercase font-black text-gray-700 tracking-wider">Ficha Técnica: {ficha.code}</p></div>
                     </div>
