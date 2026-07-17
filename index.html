@@ -18,10 +18,13 @@
   </script>
 
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    
+    body { font-family: 'Inter', sans-serif; }
+    
     .scrollbar-hide::-webkit-scrollbar { display: none; }
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -63,7 +66,7 @@
     .toast-exit { animation: slideOut 0.3s ease-in forwards; }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="bg-slate-50 text-gray-800 font-sans">
   <div id="root"></div>
 
   <script type="text/babel" data-type="module">
@@ -75,11 +78,12 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
     import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-const {
-      LayoutDashboard, FileText, Plus, Search, Filter,
+    // Adicionado novos ícones para o painel (Clock, Zap, Activity)
+    const {
+      LayoutDashboard, FileText, Plus, Search, Filter, Settings,
       Edit, Printer, CheckCircle, Info, Database, Upload, Trash2, ArrowLeft,
       Building, MapPin, Phone, Mail, X, Image: ImageIcon, Save, Calculator, Package,
-      Copy, GripVertical, AlertTriangle, HelpCircle, Download, ChevronUp, ChevronDown, SaveAll, Check, Settings
+      Copy, GripVertical, AlertTriangle, HelpCircle, Download, ChevronUp, ChevronDown, SaveAll, Check, Clock, Zap, Activity
     } = Lucide;
 
     // ============================================================================
@@ -98,9 +102,6 @@ const {
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Caminho da logo referenciando o diretório local do projeto
-    const LOGO_URL = "./logo.png";
-
     const emptyFicha = {
       id: '', code: '', name: '', category: '', version: 1, status: 'draft', coverImage: '', general: { brand: 'IMAC', description: '' },
       technical: { unitsPerPackage: 0, packageWeight: '', unitWeight: '', perTray: 0, ovens: [] },
@@ -112,86 +113,9 @@ const {
       approval: { show: false, createdBy: '', reviewedBy: '', approvedBy: '' }, revisionHistory: []
     };
 
-    const mockFichas = [
-      {
-        id: 'PF-001', code: 'PF-001', name: 'Pão Francês', category: 'Pães', version: 1, status: 'active', updatedAt: '16/06/2026',
-        coverImage: 'https://images.unsplash.com/photo-1598373182133-52452f7691ef?w=800&q=80',
-        general: { brand: 'IMAC', description: 'Pão Francês Tradicional IMAC.' },
-        technical: { unitsPerPackage: 71, packageWeight: '5 kg', unitWeight: '70g', perTray: 20, ovens: [{ id: 1, name: 'Forno Lastro', temp: '200°C', time: '17 min', vapor: 'Sim' }] },
-        ingredients: { text: 'Farinha de trigo enriquecida de ferro e ácido fólico, água, sal, fermento biológico.', containsGluten: true, containsLactose: false, allergensText: 'DERIVADOS DE TRIGO' },
-        conservation: { frozen: '-12°C ou mais frio', openPackage: '1 mês', closedPackage: 'Vide validade' },
-        validity: { package: '60 dias', postBaking: 'Diário', postDefrost: 'Não recongelar' },
-        preparationSteps: [], formulation: [],
-        nutritional: { finalYield: '', portionsPerPackage: 100, portion: 50, measure: '5/7 unidade', kcal: 140, carbs: 24, totalSugars: 0, addedSugars: 0, proteins: 3, totalFats: 3, satFats: 0, transFats: 0, fiber: 1, sodium: 242 }
-      }
-    ];
+    const mockFichas = [];
+    const mockIngredients = [];
 
-    const mockIngredients = [
-      { id: 'ING-1', name: 'Farinha de Trigo Especial', supplier: 'Moinho Rosa', referencePortion: 50, kcal: 173, carbs: 36, totalSugars: 0, addedSugars: 0, proteins: 5, totalFats: 0, satFats: 0, transFats: 0, fiber: 1.5, sodium: 0 }
-    ];
-
-    const parseIMACPdf = (text, filename) => {
-      const normalizedText = text.replace(/\s+/g, ' ');
-      const getMatch = (regex, fallback = '') => { const m = normalizedText.match(regex); return m ? m[1].trim() : fallback; };
-
-      let name = getMatch(/Ficha Técnica\s+(.*?)\s+Unidades por Pacote/i) || filename.replace('.pdf', '');
-      const units = getMatch(/Média de (\d+) unidades/i, "0");
-      const packWeight = getMatch(/Peso do Pacote:\s*(.*?)\s+Peso/i, "5 kg");
-      const perTray = getMatch(/por tela:\s*(\d+)\s+unidades/i) || getMatch(/vez na fritadeira:\s*(\d+)\s+unidades/i, "0");
-
-      const tempLastro = getMatch(/(\d+°C)\s*\(lastro\)/i);
-      const tempTurbo = getMatch(/(\d+°C)\s*\(turbo\)/i);
-      const tempFritadeira = getMatch(/Temperatura:\s*(\d+°C)\.?\s+Quantidade/i);
-      const time = getMatch(/Tempo de Assamento:\s*(.*?)\s+Quantidade/i, "");
-      const vapor = getMatch(/Vapor no forno:\s*(Sim|Não)/i, "Não");
-
-      const ovens = [];
-      if (tempLastro) ovens.push({ id: 1, name: 'Forno Lastro', temp: tempLastro, time: time, vapor: vapor });
-      if (tempTurbo) ovens.push({ id: 2, name: 'Forno Turbo', temp: tempTurbo, time: time, vapor: vapor });
-      if (ovens.length === 0 && tempFritadeira) ovens.push({ id: 1, name: 'Fritadeira', temp: tempFritadeira, time: time, vapor: 'Não' });
-
-      let ingredientsText = getMatch(/Ingredientes\s+(.*?)\s+INFORMAÇÃO NUTRICIONAL/i, "");
-      if(!ingredientsText) ingredientsText = getMatch(/Ingredientes\s+(.*?)\s+Informação Nutricional/i, "");
-
-      const containsGluten = /CONTÉM GLÚTEN/i.test(ingredientsText);
-      const containsLactose = /CONTÉM LACTOSE/i.test(ingredientsText);
-      const allergens = getMatch(/ALÉRGICOS:\s*(.*?)(?=\.|$)/i, "");
-
-      const valPacote = getMatch(/Validade do Pacote\s*(\d+\s+dias)/i, "60 dias");
-      const valAssado = getMatch(/Validade Após o Assamento\s*(.*?)\./i) || getMatch(/Validade Após o Assamento\s*(.*?)\s+Ingredientes/i, "Diário");
-      const portionsPkg = getMatch(/Porções por embalagem:\s*(\d+)/i, "100");
-      const portion = getMatch(/Porção:\s*(\d+)g/i, "50");
-      const measure = getMatch(/Porção:\s*\d+g\s*\((.*?)\)/i, "");
-
-      let prepRaw = "";
-      const prepMatch = normalizedText.match(/fornecidos pela por[cç][aã]o[\s\.\*\|"']*(.*?)(?:IMAC Ind[uú]stria|Av\. Cel\. C[ií]cero)/i);
-      if (prepMatch) prepRaw = prepMatch[1].replace(/\|/g, '').trim();
-
-      let prepSteps = [];
-      if (prepRaw) {
-         const tokens = prepRaw.split(/([A-Z0-9À-Ÿ][A-Za-zÀ-ÿ0-9\s\-\.º°]{2,35}:)/g).filter(s => s.trim() !== "");
-         let currentId = 1;
-         for (let i = 0; i < tokens.length; i++) {
-             if (tokens[i].trim().endsWith(':')) {
-                 prepSteps.push({ id: currentId++, title: tokens[i].replace(':', '').trim(), desc: (tokens[i+1] && !tokens[i+1].trim().endsWith(':')) ? tokens[i+1].trim() : '', image: '' });
-             }
-         }
-      }
-
-      if (prepSteps.length === 0 && prepRaw.length > 10) prepSteps.push({ id: 1, title: 'Modo de Preparo', desc: prepRaw, image: '' });
-
-      return {
-        ...emptyFicha,
-        id: '', code: 'IMP-' + Math.floor(Math.random()*1000), name: name, category: 'Importado', version: 1, status: 'draft',
-        technical: { unitsPerPackage: units, packageWeight: packWeight, unitWeight: '', perTray: perTray, ovens: ovens },
-        ingredients: { text: ingredientsText, containsGluten: containsGluten, containsLactose: containsLactose, allergensText: allergens },
-        validity: { package: valPacote, postBaking: valAssado, postDefrost: 'Não recongelar' },
-        preparationSteps: prepSteps, formulation: [],
-        nutritional: { finalYield: '', portionsPerPackage: portionsPkg, portion: portion, measure: measure, kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 }
-      };
-    };
-
-    // Função auxiliar para evitar problema de dízima no JS
     const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 
     // ============================================================================
@@ -221,15 +145,13 @@ const {
         setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
       };
 
-      // Configurações mantidas apenas para o rodapé (sem edição na interface)
-      const companySettings = { 
-        name: 'IMAC Indústria de Massas Congeladas', 
-        address: 'Av. Cel. Cícero Sá, 4000', 
-        phone: '(85) 3878-1249', 
-        email: 'qualidade@imac.com' 
+      const getInitialSettings = () => {
+        const savedSettings = localStorage.getItem('imac_company_settings');
+        if (savedSettings) try { return JSON.parse(savedSettings); } catch (e) {}
+        return { name: 'IMAC Indústria de Massas Congeladas', address: 'Av. Cel. Cícero Sá, 4000', phone: '(85) 3878-1249' };
       };
+      const [companySettings, setCompanySettings] = useState(getInitialSettings);
 
-      // Autenticação e Firestore
       useEffect(() => {
         signInAnonymously(auth).catch(err => { console.error(err); setLoadingAuth(false); });
         const unsub = onAuthStateChanged(auth, (u) => {
@@ -257,7 +179,6 @@ const {
         return () => { unsubFichas && unsubFichas(); unsubIng && unsubIng(); }
       }, [user, isFallbackMode]);
 
-      // Actions
       const handleSaveFicha = async (fichaData, msgSuccess = "Ficha salva com sucesso!") => {
         const isNew = !fichaData.id;
         const saveId = isNew ? `FICHA-${Date.now()}` : fichaData.id;
@@ -313,81 +234,100 @@ const {
         });
       };
 
-      if (loadingAuth) return <div className="h-screen w-full flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#F4B400]"></div></div>;
+      const handleNavigateToForm = (ficha = emptyFicha) => {
+        setSelectedFicha(ficha);
+        setCurrentView('form');
+      };
+
+      if (loadingAuth) return <div className="h-screen w-full flex items-center justify-center bg-slate-50"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#F4B400]"></div></div>;
 
       return (
-        <div className="flex h-screen bg-gray-50 text-gray-800 overflow-hidden print:h-auto print:overflow-visible print:block print:bg-white">
+        <div className="flex h-screen bg-slate-50 text-gray-800 overflow-hidden print:h-auto print:overflow-visible print:block print:bg-white selection:bg-[#F4B400] selection:text-[#5c3a21]">
           
           {/* TOASTS */}
           <div className="fixed top-4 right-4 z-[200] flex flex-col space-y-2 pointer-events-none">
              {toasts.map(toast => (
-                <div key={toast.id} className={`toast-enter bg-white p-3 rounded shadow-lg border-l-4 flex items-center space-x-3 pointer-events-auto max-w-sm ${toast.type === 'success' ? 'border-green-500 text-green-700' : 'border-blue-500 text-blue-700'}`}>
-                   {toast.type === 'success' ? <CheckCircle size={20} className="text-green-500"/> : <Info size={20} className="text-blue-500"/>}
-                   <p className="text-sm font-bold">{toast.message}</p>
+                <div key={toast.id} className={`toast-enter bg-white p-4 rounded-xl shadow-2xl border-l-4 flex items-center space-x-3 pointer-events-auto max-w-sm transition-all duration-300 ${toast.type === 'success' ? 'border-green-500 text-green-800' : 'border-blue-500 text-blue-800'}`}>
+                   {toast.type === 'success' ? <CheckCircle size={24} className="text-green-500 drop-shadow-sm"/> : <Info size={24} className="text-blue-500 drop-shadow-sm"/>}
+                   <p className="text-sm font-semibold">{toast.message}</p>
                 </div>
              ))}
           </div>
 
           {/* Dialog Modal Global */}
           {dialog.isOpen && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-              <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
-                <div className="p-6 text-center space-y-4">
-                  <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-inner ${dialog.type === 'confirm' ? 'bg-yellow-100 text-yellow-600' : 'bg-blue-100 text-blue-600'}`}>
-                    {dialog.type === 'confirm' ? <HelpCircle size={32} /> : <Info size={32} />}
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 transition-all">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden animate-[slideIn_0.2s_ease-out]">
+                <div className="p-8 text-center space-y-5">
+                  <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto shadow-inner ${dialog.type === 'confirm' ? 'bg-yellow-100/80 text-yellow-600' : 'bg-blue-100/80 text-blue-600'}`}>
+                    {dialog.type === 'confirm' ? <HelpCircle size={40} /> : <Info size={40} />}
                   </div>
-                  <h3 className="text-xl font-bold text-[#5c3a21]">{dialog.title}</h3>
-                  <p className="text-sm text-gray-500">{dialog.message}</p>
+                  <h3 className="text-2xl font-black text-[#5c3a21]">{dialog.title}</h3>
+                  <p className="text-sm text-gray-600 font-medium leading-relaxed">{dialog.message}</p>
                 </div>
-                <div className="bg-gray-50 p-4 flex justify-end space-x-3 border-t border-gray-200">
-                  {dialog.type === 'confirm' && <button onClick={closeDialog} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded">Cancelar</button>}
-                  <button onClick={() => { if(dialog.onConfirm) dialog.onConfirm(); closeDialog(); }} className="bg-[#5c3a21] hover:bg-[#4a2e1a] text-white px-6 py-2 rounded shadow font-bold">
-                    {dialog.type === 'confirm' ? 'Confirmar' : 'OK'}
+                <div className="bg-slate-50 p-5 flex justify-end space-x-3 border-t border-slate-100">
+                  {dialog.type === 'confirm' && <button onClick={closeDialog} className="px-5 py-2.5 text-gray-600 font-bold hover:bg-gray-200 transition-colors rounded-xl">Cancelar</button>}
+                  <button onClick={() => { if(dialog.onConfirm) dialog.onConfirm(); closeDialog(); }} className="bg-[#5c3a21] hover:bg-[#4a2e1a] text-white px-7 py-2.5 rounded-xl shadow-md font-bold transition-transform hover:scale-105">
+                    {dialog.type === 'confirm' ? 'Confirmar' : 'Entendi'}
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* SIDEBAR */}
-          <aside className={`no-print bg-[#5c3a21] text-white transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'} flex flex-col shadow-2xl z-20`}>
-            <div className="p-4 flex items-center justify-center h-20 border-b border-[#4a2e1a]">
-              <div className="flex items-center space-x-2 font-black cursor-pointer" onClick={() => setCurrentView('dashboard')}>
+          {/* SIDEBAR COM CORREÇÃO DE TRANSPARÊNCIA DA LOGO */}
+          <aside className={`no-print bg-[#5c3a21] text-white transition-all duration-300 ${sidebarOpen ? 'w-72' : 'w-20'} flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.15)] z-20 relative`}>
+            {/* O SEGREDO DA LOGO ESTÁ AQUI: SEM BG-WHITE, APENAS FLEX CENTER */}
+            <div className="p-4 flex items-center justify-center h-24 border-b border-white/10">
+              <div className="flex items-center space-x-2 cursor-pointer transition-transform hover:scale-105" onClick={() => setCurrentView('dashboard')}>
                  {sidebarOpen ? (
-                    <div className="bg-white py-1 px-2 rounded-lg shadow-md flex justify-center">
-                        <img src={LOGO_URL} alt="Logo IMAC" className="h-10 max-w-[180px] object-contain" />
-                    </div>
+                    <img src="logo.png" alt="IMAC Logo" className="h-14 max-w-[180px] object-contain drop-shadow-lg" />
                  ) : (
-                    <div className="w-10 h-10 bg-[#F4B400] rounded-full flex items-center justify-center text-[#5c3a21] text-sm font-black shadow-md">IM</div>
+                    <div className="w-12 h-12 bg-[#F4B400] rounded-xl flex items-center justify-center text-[#5c3a21] font-black shadow-lg">
+                        <img src="logo.png" alt="Icon" className="w-8 h-8 object-contain" />
+                    </div>
                  )}
               </div>
             </div>
-            <nav className="flex-1 py-6 space-y-2 px-3 overflow-y-auto">
-              <NavItem icon={<LayoutDashboard size={20}/>} label="Dashboard" active={currentView === 'dashboard'} onClick={() => setCurrentView('dashboard')} open={sidebarOpen} />
-              <NavItem icon={<FileText size={20}/>} label="Fichas Técnicas" active={currentView === 'list'} onClick={() => setCurrentView('list')} open={sidebarOpen} />
-              <NavItem icon={<Package size={20}/>} label="Ingredientes" active={currentView === 'ingredients'} onClick={() => setCurrentView('ingredients')} open={sidebarOpen} />
+            
+            <nav className="flex-1 py-8 space-y-2 px-4 overflow-y-auto">
+              <NavItem icon={<LayoutDashboard size={22}/>} label="Dashboard" active={currentView === 'dashboard'} onClick={() => setCurrentView('dashboard')} open={sidebarOpen} />
+              <NavItem icon={<FileText size={22}/>} label="Fichas Técnicas" active={currentView === 'list'} onClick={() => setCurrentView('list')} open={sidebarOpen} />
+              <NavItem icon={<Package size={22}/>} label="Ingredientes" active={currentView === 'ingredients'} onClick={() => setCurrentView('ingredients')} open={sidebarOpen} />
             </nav>
-            <div className="p-4 border-t border-[#4a2e1a] text-sm text-[#F4B400] flex justify-center cursor-pointer hover:bg-[#4a2e1a]" onClick={() => setSidebarOpen(!sidebarOpen)}>
-              {sidebarOpen ? "« Recolher Menu" : "»"}
+            
+            <div className="p-4 border-t border-white/10 text-sm text-[#F4B400] flex justify-center cursor-pointer hover:bg-white/5 transition-colors" onClick={() => setSidebarOpen(!sidebarOpen)}>
+              {sidebarOpen ? <div className="flex items-center font-bold tracking-wide"><ChevronLeft size={20} className="mr-1"/> Recolher Menu</div> : <ChevronRight size={24}/>}
             </div>
           </aside>
 
           {/* MAIN CONTENT AREA */}
           <main className="flex-1 flex flex-col h-full relative print:h-auto print:block">
-            <header className="no-print h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 shadow-sm z-10">
-              <h1 className="text-2xl font-bold text-[#5c3a21] flex items-center">
-                {currentView === 'dashboard' && 'Dashboard de Qualidade'}
-                {currentView === 'list' && 'Gerenciamento de Fichas Técnicas'}
-                {currentView === 'ingredients' && 'Banco de Ingredientes Próprio'}
-                {currentView === 'form' && (selectedFicha?.id ? `Editar Ficha: ${selectedFicha.name}` : 'Nova Ficha Técnica')}
-                {currentView === 'pdf' && 'Visualização de Impressão PDF'}
-                {isFallbackMode && <span className="ml-4 text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded uppercase font-bold border border-red-200">Modo Offline</span>}
+            <header className="no-print h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-8 shadow-sm z-10">
+              <h1 className="text-2xl font-black text-[#5c3a21] flex items-center tracking-tight">
+                {currentView === 'dashboard' && 'Visão Geral do Sistema'}
+                {currentView === 'list' && 'Gestão de Fichas Técnicas'}
+                {currentView === 'ingredients' && 'Banco de Matérias-Primas'}
+                {currentView === 'form' && (selectedFicha?.id ? `Editando: ${selectedFicha.name}` : 'Criando Nova Ficha')}
+                {currentView === 'pdf' && 'Visualização de Impressão'}
+                {isFallbackMode && <span className="ml-4 text-[11px] bg-red-100 text-red-600 px-3 py-1.5 rounded-full uppercase font-bold border border-red-200 flex items-center"><Activity size={14} className="mr-1"/> Modo Offline</span>}
               </h1>
+              
+              {/* Profile Mockup for Aesthetics */}
+              <div className="flex items-center space-x-4">
+                <div className="text-right hidden md:block">
+                  <p className="text-sm font-bold text-[#5c3a21] leading-none">Equipe Qualidade</p>
+                  <p className="text-xs text-gray-500 font-medium mt-1">IMAC Alimentos</p>
+                </div>
+                <div className="w-10 h-10 bg-[#F4B400] rounded-full flex items-center justify-center text-[#5c3a21] font-black shadow-sm border-2 border-white">
+                  EQ
+                </div>
+              </div>
             </header>
 
-            <div className="flex-1 overflow-auto bg-gray-50 p-6 h-[calc(100vh-80px)] print:h-auto print:overflow-visible print:block print:p-0">
-              {currentView === 'dashboard' && <DashboardView fichas={fichas} customIngredients={customIngredients} />}
-              {currentView === 'list' && <ListView fichas={fichas} onEdit={(f) => { setSelectedFicha(f); setCurrentView('form'); }} onPdf={(f) => { setSelectedFicha(f); setCurrentView('pdf'); }} onNew={() => { setSelectedFicha(emptyFicha); setCurrentView('form'); }} onDelete={handleDelete} onDuplicate={handleDuplicate} addToast={addToast} showMessage={showMessage}/>}
+            <div className="flex-1 overflow-auto p-8 h-[calc(100vh-80px)] print:h-auto print:overflow-visible print:block print:p-0">
+              {currentView === 'dashboard' && <DashboardView fichas={fichas} customIngredients={customIngredients} onNavigateToForm={handleNavigateToForm} onViewFichas={() => setCurrentView('list')} onViewIngredients={() => setCurrentView('ingredients')} />}
+              {currentView === 'list' && <ListView fichas={fichas} onEdit={(f) => { setSelectedFicha(f); setCurrentView('form'); }} onPdf={(f) => { setSelectedFicha(f); setCurrentView('pdf'); }} onNew={() => handleNavigateToForm()} onDelete={handleDelete} onDuplicate={handleDuplicate} addToast={addToast} showMessage={showMessage}/>}
               {currentView === 'ingredients' && <IngredientsView ingredients={customIngredients} onSave={handleSaveIngredient} onDelete={handleDeleteIngredient} showMessage={showMessage} />}
               {currentView === 'form' && <FormView ficha={selectedFicha} customIngredients={customIngredients} onBack={() => setCurrentView('list')} onSave={handleSaveFicha} showMessage={showMessage} showConfirm={showConfirm} addToast={addToast} />}
               {currentView === 'pdf' && <PDFView ficha={selectedFicha} onBack={() => setCurrentView('list')} companySettings={companySettings} />}
@@ -397,28 +337,130 @@ const {
       );
     }
 
+    // Componentes menores e SVG Helpers
+    const ChevronLeft = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m15 18-6-6 6-6"/></svg>;
+    const ChevronRight = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6"/></svg>;
+
     const NavItem = ({ icon, label, active, onClick, open }) => (
-      <div onClick={onClick} className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-all ${active ? 'bg-[#F4B400] text-[#5c3a21] font-bold shadow-md' : 'text-gray-300 hover:bg-[#4a2e1a] hover:text-white font-medium'}`}>
-        {icon}{open && <span>{label}</span>}
+      <div onClick={onClick} className={`flex items-center space-x-3 p-3.5 rounded-xl cursor-pointer transition-all duration-200 group ${active ? 'bg-[#F4B400] text-[#5c3a21] font-black shadow-[0_4px_12px_rgba(244,180,0,0.3)]' : 'text-white/70 hover:bg-white/10 hover:text-white font-semibold'}`}>
+        <div className={`${active ? 'scale-110' : 'group-hover:scale-110'} transition-transform`}>{icon}</div>
+        {open && <span className="tracking-wide text-sm">{label}</span>}
       </div>
     );
 
-    const StatCard = ({ title, value, icon, color }) => (
-      <div className={`p-6 rounded-xl border shadow-sm flex items-center space-x-4 ${color}`}>
-        <div className="p-3 bg-gray-50 rounded-lg border">{icon}</div>
-        <div><p className="text-xs text-gray-500 font-bold uppercase">{title}</p><h3 className="text-3xl font-black text-[#5c3a21]">{value}</h3></div>
-      </div>
-    );
-
-    const DashboardView = ({ fichas, customIngredients }) => (
-      <div className="space-y-6 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-          <StatCard title="Total" value={fichas.length} icon={<FileText size={24} className="text-[#5c3a21]" />} color="bg-white border-gray-200" />
-          <StatCard title="Ativos" value={fichas.filter(f=>f.status==='active').length} icon={<CheckCircle size={24} className="text-green-600" />} color="bg-white border-l-4 border-l-green-500" />
-          <StatCard title="Rascunhos" value={fichas.filter(f=>f.status==='draft').length} icon={<Edit size={24} className="text-yellow-500" />} color="bg-white border-l-4 border-l-yellow-400" />
+    const StatCard = ({ title, value, icon, color, bgIcon }) => (
+      <div className={`p-6 rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex items-center space-x-5 bg-white relative overflow-hidden`}>
+        <div className={`absolute -right-4 -top-4 opacity-5 ${color.replace('text-', 'text-')}`}>
+          {React.cloneElement(icon, { size: 100 })}
+        </div>
+        <div className={`p-4 rounded-xl ${bgIcon} ${color} shadow-inner z-10`}>{icon}</div>
+        <div className="z-10">
+          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">{title}</p>
+          <h3 className="text-4xl font-black text-gray-800">{value}</h3>
         </div>
       </div>
     );
+
+    // ============================================================================
+    // DASHBOARD EXPANDIDO (Mais atrativo e completo)
+    // ============================================================================
+    const DashboardView = ({ fichas, customIngredients, onNavigateToForm, onViewFichas, onViewIngredients }) => {
+      // Pega as últimas 4 fichas alteradas (simulação por ID se não tiver timestamp preciso)
+      const recentFichas = [...fichas].reverse().slice(0, 4);
+
+      return (
+        <div className="space-y-8 max-w-7xl mx-auto h-full animate-[slideIn_0.3s_ease-out]">
+          
+          {/* CARDS DE ESTATÍSTICAS */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <StatCard title="Total de Fichas" value={fichas.length} icon={<FileText size={28} />} color="text-[#5c3a21]" bgIcon="bg-orange-50" />
+            <StatCard title="Fichas Ativas" value={fichas.filter(f=>f.status==='active').length} icon={<CheckCircle size={28} />} color="text-green-600" bgIcon="bg-green-50" />
+            <StatCard title="Em Rascunho" value={fichas.filter(f=>f.status==='draft').length} icon={<Edit size={28} />} color="text-yellow-600" bgIcon="bg-yellow-50" />
+            <StatCard title="Ingredientes" value={customIngredients.length} icon={<Package size={28} />} color="text-blue-600" bgIcon="bg-blue-50" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             
+             {/* ÁREA DE AÇÕES RÁPIDAS (Ocupando espaço esquerdo) */}
+             <div className="lg:col-span-1 space-y-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                   <h3 className="text-lg font-black text-[#5c3a21] flex items-center mb-6"><Zap size={20} className="mr-2 text-[#F4B400]"/> Ações Rápidas</h3>
+                   <div className="space-y-3">
+                      <button onClick={() => onNavigateToForm()} className="w-full flex items-center justify-between p-4 bg-[#F4B400]/10 hover:bg-[#F4B400]/20 text-[#5c3a21] rounded-xl font-bold transition-all group border border-[#F4B400]/20">
+                         <div className="flex items-center"><Plus size={20} className="mr-3"/> Criar Ficha Técnica</div>
+                         <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/>
+                      </button>
+                      <button onClick={onViewFichas} className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 text-gray-700 rounded-xl font-bold transition-all group border border-slate-200">
+                         <div className="flex items-center"><Search size={20} className="mr-3 text-gray-400"/> Consultar Fichas</div>
+                         <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/>
+                      </button>
+                      <button onClick={onViewIngredients} className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 text-gray-700 rounded-xl font-bold transition-all group border border-slate-200">
+                         <div className="flex items-center"><Database size={20} className="mr-3 text-gray-400"/> Gerenciar Ingredientes</div>
+                         <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/>
+                      </button>
+                   </div>
+                </div>
+
+                {/* Mini Dica ou Info (Ocupando mais espaço com elegância) */}
+                <div className="bg-gradient-to-br from-[#5c3a21] to-[#3a2212] p-6 rounded-2xl shadow-lg text-white relative overflow-hidden">
+                   <div className="absolute -right-6 -bottom-6 opacity-10"><Info size={120}/></div>
+                   <h4 className="font-black text-[#F4B400] flex items-center mb-2"><Info size={18} className="mr-2"/> Dica de Uso</h4>
+                   <p className="text-sm text-white/80 leading-relaxed font-medium">
+                     Mantenha seu <strong>Banco de Ingredientes</strong> atualizado com base nos rótulos de seus fornecedores. Isso garante que a Tabela Nutricional das Fichas seja gerada com precisão absoluta.
+                   </p>
+                </div>
+             </div>
+
+             {/* LISTA DE FICHAS RECENTES (Ocupando espaço direito) */}
+             <div className="lg:col-span-2">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-full">
+                   <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-lg font-black text-[#5c3a21] flex items-center"><Clock size={20} className="mr-2 text-gray-400"/> Adicionadas / Alteradas Recentemente</h3>
+                      <button onClick={onViewFichas} className="text-sm font-bold text-blue-600 hover:text-blue-800">Ver todas</button>
+                   </div>
+                   
+                   <div className="space-y-3">
+                      {recentFichas.length === 0 ? (
+                         <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                            <FileText size={40} className="mx-auto mb-3 text-slate-300"/>
+                            <p className="text-slate-500 font-medium">Nenhuma ficha criada ainda.</p>
+                         </div>
+                      ) : (
+                         recentFichas.map(f => (
+                           <div key={f.id} className="flex items-center justify-between p-4 hover:bg-slate-50 border border-slate-100 rounded-xl transition-colors cursor-pointer group" onClick={() => {}}>
+                              <div className="flex items-center space-x-4">
+                                 {f.coverImage ? (
+                                    <img src={f.coverImage} className="w-12 h-12 rounded-lg object-cover shadow-sm border border-slate-200 group-hover:scale-105 transition-transform" />
+                                 ) : (
+                                    <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center group-hover:scale-105 transition-transform">
+                                       <ImageIcon size={20} className="text-slate-400"/>
+                                    </div>
+                                 )}
+                                 <div>
+                                    <h4 className="font-bold text-gray-800">{f.name}</h4>
+                                    <div className="flex items-center text-xs text-gray-500 font-medium mt-0.5 space-x-2">
+                                       <span>{f.code}</span>
+                                       <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                                       <span className="text-[#5c3a21]">{f.category}</span>
+                                    </div>
+                                 </div>
+                              </div>
+                              <div className="flex items-center space-x-4">
+                                 <span className={`px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider border ${f.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : f.status === 'inactive' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
+                                    {f.status === 'active' ? 'Ativo' : f.status === 'inactive' ? 'Inativo' : 'Rascunho'}
+                                 </span>
+                                 <button onClick={(e) => { e.stopPropagation(); onNavigateToForm(f); }} className="p-2 text-gray-400 hover:text-[#5c3a21] hover:bg-[#F4B400]/20 rounded-lg transition-colors"><Edit size={18}/></button>
+                              </div>
+                           </div>
+                         ))
+                      )}
+                   </div>
+                </div>
+             </div>
+          </div>
+        </div>
+      );
+    };
 
     // ============================================================================
     // 3. TELA DE LISTAGEM E EXPORTAÇÃO CSV
@@ -463,60 +505,62 @@ const {
       const categorias = [...new Set(fichas.map(f => f.category).filter(Boolean))];
 
       return (
-        <div className="space-y-6 max-w-7xl mx-auto h-full flex flex-col pb-10">
-          <div className="flex flex-wrap justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm gap-4">
-            <div className="flex items-center space-x-3 flex-1">
-              <div className="relative w-72">
-                <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-                <input type="text" placeholder="Buscar por nome ou código..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 outline-none text-sm" />
+        <div className="space-y-6 max-w-7xl mx-auto h-full flex flex-col pb-10 animate-[slideIn_0.2s_ease-out]">
+          <div className="flex flex-wrap justify-between items-center bg-white p-5 rounded-2xl border border-slate-200 shadow-sm gap-4">
+            <div className="flex items-center space-x-4 flex-1">
+              <div className="relative w-80">
+                <Search className="absolute left-3.5 top-3 text-slate-400" size={18} />
+                <input type="text" placeholder="Buscar por nome ou código..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-11 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#F4B400] focus:border-transparent outline-none text-sm transition-all bg-slate-50 focus:bg-white" />
               </div>
-              <select value={filterCat} onChange={e=>setFilterCat(e.target.value)} className="py-2 px-3 border rounded-lg text-sm text-gray-600 outline-none focus:ring-2 bg-gray-50">
-                <option value="">Todas Categorias</option>
+              <select value={filterCat} onChange={e=>setFilterCat(e.target.value)} className="py-2.5 px-4 border border-slate-200 rounded-xl text-sm text-slate-600 outline-none focus:ring-2 focus:ring-[#F4B400] bg-slate-50 font-medium">
+                <option value="">Todas as Categorias</option>
                 {categorias.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-              <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="py-2 px-3 border rounded-lg text-sm text-gray-600 outline-none focus:ring-2 bg-gray-50">
-                <option value="">Todos Status</option>
-                <option value="active">Ativo</option>
-                <option value="draft">Rascunho</option>
-                <option value="inactive">Inativo</option>
+              <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="py-2.5 px-4 border border-slate-200 rounded-xl text-sm text-slate-600 outline-none focus:ring-2 focus:ring-[#F4B400] bg-slate-50 font-medium">
+                <option value="">Status (Todos)</option>
+                <option value="active">Ativos</option>
+                <option value="draft">Rascunhos</option>
+                <option value="inactive">Inativos</option>
               </select>
             </div>
             <div className="flex gap-3">
-               <button onClick={handleExportCSV} className="bg-gray-800 hover:bg-gray-700 text-white font-bold px-4 py-2 rounded-lg shadow flex items-center space-x-2 transition-colors"><Download size={18} /> <span>CSV</span></button>
-               <button onClick={onNew} className="bg-[#F4B400] hover:bg-[#d9a000] text-[#5c3a21] font-bold px-5 py-2 rounded-lg shadow flex items-center space-x-2 transition-colors"><Plus size={18} /> <span>Nova Ficha</span></button>
+               <button onClick={handleExportCSV} className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-5 py-2.5 rounded-xl shadow-md flex items-center space-x-2 transition-transform hover:scale-105"><Download size={18} /> <span>CSV</span></button>
+               <button onClick={onNew} className="bg-[#F4B400] hover:bg-[#e0a600] text-[#5c3a21] font-bold px-6 py-2.5 rounded-xl shadow-md flex items-center space-x-2 transition-transform hover:scale-105"><Plus size={20} /> <span>Nova Ficha</span></button>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border flex-1 overflow-auto">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex-1 overflow-auto">
             <table className="w-full text-sm text-left">
-              <thead className="bg-[#5c3a21] text-white uppercase font-bold text-xs sticky top-0 z-10">
+              <thead className="bg-slate-50 text-slate-500 uppercase font-bold text-[11px] sticky top-0 z-10 tracking-wider">
                 <tr>
-                  <th className="px-6 py-4 cursor-pointer hover:bg-[#4a2e1a]" onClick={() => handleSort('name')}>Produto {sortConfig.key==='name' && (sortConfig.direction==='asc'?<ChevronUp size={14} className="inline"/>:<ChevronDown size={14} className="inline"/>)}</th>
-                  <th className="px-6 py-4 cursor-pointer hover:bg-[#4a2e1a]" onClick={() => handleSort('category')}>Categoria {sortConfig.key==='category' && (sortConfig.direction==='asc'?<ChevronUp size={14} className="inline"/>:<ChevronDown size={14} className="inline"/>)}</th>
-                  <th className="px-6 py-4 cursor-pointer hover:bg-[#4a2e1a]" onClick={() => handleSort('status')}>Status {sortConfig.key==='status' && (sortConfig.direction==='asc'?<ChevronUp size={14} className="inline"/>:<ChevronDown size={14} className="inline"/>)}</th>
-                  <th className="px-6 py-4 text-center">Revisão</th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-[#5c3a21] transition-colors" onClick={() => handleSort('name')}>Produto {sortConfig.key==='name' && (sortConfig.direction==='asc'?<ChevronUp size={14} className="inline"/>:<ChevronDown size={14} className="inline"/>)}</th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-[#5c3a21] transition-colors" onClick={() => handleSort('category')}>Categoria {sortConfig.key==='category' && (sortConfig.direction==='asc'?<ChevronUp size={14} className="inline"/>:<ChevronDown size={14} className="inline"/>)}</th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-[#5c3a21] transition-colors" onClick={() => handleSort('status')}>Status {sortConfig.key==='status' && (sortConfig.direction==='asc'?<ChevronUp size={14} className="inline"/>:<ChevronDown size={14} className="inline"/>)}</th>
+                  <th className="px-6 py-4 text-center">Versão</th>
                   <th className="px-6 py-4 text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody>
-                {filtered.length === 0 ? <tr><td colSpan="5" className="text-center py-10 text-gray-500">Nenhuma ficha encontrada.</td></tr> : filtered.map(f => (
-                  <tr key={f.id} className="border-b hover:bg-[#fffdf5]">
+              <tbody className="divide-y divide-slate-100">
+                {filtered.length === 0 ? <tr><td colSpan="5" className="text-center py-16 text-slate-400 font-medium text-base">Nenhuma ficha encontrada com estes filtros.</td></tr> : filtered.map(f => (
+                  <tr key={f.id} className="hover:bg-slate-50/80 transition-colors group">
                     <td className="px-6 py-4 font-medium flex items-center space-x-4">
-                        {f.coverImage ? <img src={f.coverImage} className="w-10 h-10 rounded object-cover border" /> : <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center"><ImageIcon size={16} className="text-gray-400"/></div>}
-                        <div><div className="font-bold text-[#5c3a21]">{f.name}</div><div className="text-[10px] text-gray-500 font-mono">{f.code}</div></div>
+                        {f.coverImage ? <img src={f.coverImage} className="w-12 h-12 rounded-lg object-cover border border-slate-200 shadow-sm" /> : <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200"><ImageIcon size={20} className="text-slate-300"/></div>}
+                        <div><div className="font-bold text-gray-800 text-base">{f.name}</div><div className="text-[11px] text-slate-500 font-medium tracking-wide mt-0.5">{f.code}</div></div>
                     </td>
-                    <td className="px-6 py-4 text-gray-600">{f.category}</td>
+                    <td className="px-6 py-4 text-slate-600 font-medium">{f.category || '-'}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider border ${f.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : f.status === 'inactive' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
+                      <span className={`px-3 py-1.5 rounded-full text-[10px] uppercase font-bold tracking-wider border ${f.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : f.status === 'inactive' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
                         {f.status === 'active' ? 'Ativo' : f.status === 'inactive' ? 'Inativo' : 'Rascunho'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center text-gray-500 font-mono text-xs">v{f.version}.0</td>
-                    <td className="px-6 py-4 text-right space-x-1">
-                      <button onClick={() => onPdf(f)} className="p-2 text-gray-400 hover:text-[#5c3a21] hover:bg-[#F4B400] rounded"><Printer size={18} /></button>
-                      <button onClick={() => onDuplicate(f)} className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"><Copy size={18} /></button>
-                      <button onClick={() => onEdit(f)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"><Edit size={18} /></button>
-                      <button onClick={() => onDelete(f.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 size={18} /></button>
+                    <td className="px-6 py-4 text-center text-slate-500 font-bold text-xs bg-slate-50/50">v{f.version}.0</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end space-x-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <button title="Imprimir/PDF" onClick={() => onPdf(f)} className="p-2.5 text-slate-400 hover:text-[#5c3a21] hover:bg-[#F4B400] rounded-xl transition-all"><Printer size={18} /></button>
+                        <button title="Duplicar" onClick={() => onDuplicate(f)} className="p-2.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all"><Copy size={18} /></button>
+                        <button title="Editar" onClick={() => onEdit(f)} className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit size={18} /></button>
+                        <button title="Excluir" onClick={() => onDelete(f.id)} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18} /></button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -530,24 +574,21 @@ const {
     // ============================================================================
     // 4. TELA DE EDIÇÃO (FormView) E SEUS SUB-COMPONENTES
     // ============================================================================
-    
-    // COMPONENTE PARA INPUTS (FUNDAMENTAL PARA NÃO DAR TELA BRANCA)
     const InputGroup = ({ label, type = "text", value, onChange, placeholder }) => (
-      <div className="flex flex-col space-y-1">
-        <label className="text-[11px] font-bold text-gray-600 uppercase">{label}</label>
-        <input type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="p-2 border rounded text-sm focus:ring-1 focus:ring-[#F4B400] outline-none" />
+      <div className="flex flex-col space-y-1.5">
+        <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">{label}</label>
+        <input type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#F4B400] focus:border-transparent outline-none transition-shadow bg-slate-50 focus:bg-white" />
       </div>
     );
 
-    // COMPONENTE PARA LINHA NUTRICIONAL (FUNDAMENTAL PARA NÃO DAR TELA BRANCA)
     const NutriRow = ({ label, val, onChange }) => (
-      <tr className="border-b bg-white hover:bg-gray-50">
-        <td className="p-2">{label}</td>
-        <td className="p-2 w-32"><input type="number" step="0.1" value={val} onChange={e => onChange(e.target.value)} className="w-full p-1.5 border rounded outline-none" /></td>
+      <tr className="border-b border-slate-100 bg-white hover:bg-slate-50 transition-colors">
+        <td className="p-3 text-slate-700 font-medium">{label}</td>
+        <td className="p-2 w-40"><input type="number" step="0.1" value={val} onChange={e => onChange(e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-[#F4B400] bg-slate-50" /></td>
       </tr>
     );
 
-    // COMPONENTE DE EDIÇÃO DE IMAGEM
+    // COMPONENTE DE EDIÇÃO DE IMAGEM (Ajustado para salvar em PNG e manter transparência)
     const ImageEditorModal = ({ src, onSave, onCancel, showMessage }) => {
       const canvasRef = useRef(null);
       const [scale, setScale] = useState(1);
@@ -578,33 +619,37 @@ const {
       }, [src, scale, offsetX, offsetY, brightness, contrast]);
 
       const handleConfirm = () => {
-        try { onSave(canvasRef.current.toDataURL('image/jpeg', 0.85)); } 
+        try { 
+            // Mudado de image/jpeg para image/png para PRESERVAR transparência
+            onSave(canvasRef.current.toDataURL('image/png')); 
+        } 
         catch (error) { showMessage("Erro", "Não foi possível editar esta imagem. Faça upload local."); }
       };
 
       return (
-        <div className="absolute inset-0 bg-black/80 z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden">
-            <div className="bg-[#5c3a21] text-white p-4 flex justify-between items-center">
-              <h3 className="font-bold flex items-center"><ImageIcon className="mr-2" size={18}/> Ajustar Imagem</h3>
-              <button onClick={onCancel} className="hover:text-[#F4B400]"><X size={20}/></button>
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden">
+            <div className="bg-[#5c3a21] text-white p-5 flex justify-between items-center">
+              <h3 className="font-bold flex items-center text-lg"><ImageIcon className="mr-2" size={22}/> Ajuste Fino de Imagem</h3>
+              <button onClick={onCancel} className="hover:text-[#F4B400] transition-colors"><X size={24}/></button>
             </div>
-            <div className="flex flex-col md:flex-row p-4 gap-6 bg-gray-50 h-[60vh] md:h-auto overflow-y-auto">
-              <div className="flex-1 flex flex-col items-center justify-center border border-dashed border-gray-400 bg-gray-200 rounded p-4">
-                 <canvas ref={canvasRef} width={800} height={600} className="w-full max-w-full h-auto shadow-md" style={{ maxWidth: '600px', aspectRatio: '4/3' }}></canvas>
+            <div className="flex flex-col md:flex-row p-6 gap-6 bg-slate-50 h-[60vh] md:h-auto overflow-y-auto">
+              {/* O fundo xadrez ajuda a ver onde é transparente */}
+              <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-xl p-4" style={{backgroundImage: 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkYNgfQEhjx8DAwEAURgOMakg3hIkNn0mEajgYGIg2hIExGhgNyWYIAGt3Gww9lG9XAAAAAElFTkSuQmCC")'}}>
+                 <canvas ref={canvasRef} width={800} height={600} className="w-full max-w-full h-auto shadow-lg bg-transparent" style={{ maxWidth: '600px', aspectRatio: '4/3' }}></canvas>
               </div>
-              <div className="w-full md:w-72 space-y-4 bg-white p-4 rounded-lg border shadow-sm">
-                <h4 className="font-bold text-[#5c3a21] border-b pb-2 text-sm flex items-center"><Settings size={16} className="mr-2"/> Controles</h4>
-                <div className="space-y-1"><label className="text-xs font-bold text-gray-600 flex justify-between"><span>Zoom</span> <span>{scale}x</span></label><input type="range" min="1" max="4" step="0.1" value={scale} onChange={e => setScale(e.target.value)} className="w-full accent-[#F4B400]" /></div>
-                <div className="space-y-1"><label className="text-xs font-bold text-gray-600">Horizontal</label><input type="range" min="-1000" max="1000" step="10" value={offsetX} onChange={e => setOffsetX(e.target.value)} className="w-full accent-[#F4B400]" /></div>
-                <div className="space-y-1"><label className="text-xs font-bold text-gray-600">Vertical</label><input type="range" min="-1000" max="1000" step="10" value={offsetY} onChange={e => setOffsetY(e.target.value)} className="w-full accent-[#F4B400]" /></div>
-                <div className="space-y-1"><label className="text-xs font-bold text-gray-600 flex justify-between"><span>Brilho</span> <span>{brightness}%</span></label><input type="range" min="30" max="200" step="5" value={brightness} onChange={e => setBrightness(e.target.value)} className="w-full accent-[#F4B400]" /></div>
-                <div className="space-y-1"><label className="text-xs font-bold text-gray-600 flex justify-between"><span>Contraste</span> <span>{contrast}%</span></label><input type="range" min="30" max="200" step="5" value={contrast} onChange={e => setContrast(e.target.value)} className="w-full accent-[#F4B400]" /></div>
+              <div className="w-full md:w-80 space-y-5 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h4 className="font-black text-[#5c3a21] border-b pb-3 text-sm flex items-center"><Settings size={18} className="mr-2"/> Controles Deslizantes</h4>
+                <div className="space-y-1.5"><label className="text-xs font-bold text-slate-600 flex justify-between"><span>Zoom</span> <span className="text-[#F4B400]">{scale}x</span></label><input type="range" min="1" max="4" step="0.1" value={scale} onChange={e => setScale(e.target.value)} className="w-full accent-[#F4B400]" /></div>
+                <div className="space-y-1.5"><label className="text-xs font-bold text-slate-600">Posição Horizontal</label><input type="range" min="-1000" max="1000" step="10" value={offsetX} onChange={e => setOffsetX(e.target.value)} className="w-full accent-[#F4B400]" /></div>
+                <div className="space-y-1.5"><label className="text-xs font-bold text-slate-600">Posição Vertical</label><input type="range" min="-1000" max="1000" step="10" value={offsetY} onChange={e => setOffsetY(e.target.value)} className="w-full accent-[#F4B400]" /></div>
+                <div className="space-y-1.5"><label className="text-xs font-bold text-slate-600 flex justify-between"><span>Brilho</span> <span className="text-[#F4B400]">{brightness}%</span></label><input type="range" min="30" max="200" step="5" value={brightness} onChange={e => setBrightness(e.target.value)} className="w-full accent-[#F4B400]" /></div>
+                <div className="space-y-1.5"><label className="text-xs font-bold text-slate-600 flex justify-between"><span>Contraste</span> <span className="text-[#F4B400]">{contrast}%</span></label><input type="range" min="30" max="200" step="5" value={contrast} onChange={e => setContrast(e.target.value)} className="w-full accent-[#F4B400]" /></div>
               </div>
             </div>
-            <div className="p-4 border-t border-gray-200 flex justify-end gap-3 bg-white">
-              <button onClick={onCancel} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 border rounded text-sm">Cancelar</button>
-              <button onClick={handleConfirm} className="bg-[#5c3a21] text-white px-6 py-2 rounded shadow font-bold hover:bg-[#4a2e1a] text-sm flex items-center"><Save size={16} className="mr-2"/> Aplicar</button>
+            <div className="p-5 border-t border-slate-200 flex justify-end gap-4 bg-white">
+              <button onClick={onCancel} className="px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors">Cancelar</button>
+              <button onClick={handleConfirm} className="bg-[#5c3a21] text-white px-7 py-2.5 rounded-xl shadow-md font-bold hover:bg-[#4a2e1a] flex items-center transition-transform hover:scale-105"><Save size={18} className="mr-2"/> Aplicar Ajustes</button>
             </div>
           </div>
         </div>
@@ -614,8 +659,6 @@ const {
     const FormView = ({ ficha, customIngredients, onBack, onSave, showMessage, showConfirm, addToast }) => {
       const [activeTab, setActiveTab] = useState(1);
       
-      // BLINDAGEM DE DADOS: Mesclando estrutura base vazia com a ficha carregada
-      // para garantir que mesmo fichas velhas tenham 'general', 'technical', etc., evitando tela branca
       const [formData, setFormData] = useState(() => {
           const base = JSON.parse(JSON.stringify(ficha || emptyFicha));
           return {
@@ -636,8 +679,7 @@ const {
 
       const [editorState, setEditorState] = useState({ isOpen: false, src: null, type: null, stepId: null });
 
-      // Numeração corrigida
-      const tabs = [{ id: 1, label: 'Gerais' }, { id: 2, label: 'Técnicos' }, { id: 3, label: 'Ingredientes' }, { id: 4, label: 'Conserv./Valid.' }, { id: 5, label: 'Preparo' }, { id: 6, label: 'Nutricional' }, { id: 7, label: 'Aprovação' }];
+      const tabs = [{ id: 1, label: 'Dados Gerais' }, { id: 2, label: 'Parâmetros Técnicos' }, { id: 3, label: 'Ingredientes/Rótulo' }, { id: 4, label: 'Conservação' }, { id: 5, label: 'Preparo' }, { id: 6, label: 'Tabela Nutricional' }, { id: 7, label: 'Aprovação' }];
 
       const updateNested = (cat, field, val) => setFormData(p => ({ ...p, [cat]: { ...p[cat], [field]: val } }));
 
@@ -726,37 +768,37 @@ const {
       };
 
       return (
-        <div className="max-w-6xl mx-auto bg-white rounded-xl shadow border flex flex-col h-full relative">
+        <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full relative overflow-hidden animate-[slideIn_0.3s_ease-out]">
           
           {editorState.isOpen && (
              <ImageEditorModal src={editorState.src} onSave={handleEditorSave} onCancel={() => setEditorState({ isOpen: false, src: null, type: null, stepId: null })} showMessage={showMessage} />
           )}
 
-          <div className="bg-white border-b border-gray-200 p-4 flex justify-between items-center z-10">
-            <button onClick={onBack} className="flex items-center space-x-2 text-gray-500 hover:text-[#5c3a21] font-medium"><ArrowLeft size={18} /> <span>Voltar</span></button>
-            <div className="font-black text-[#5c3a21] text-lg uppercase flex items-center">
+          <div className="bg-white border-b border-slate-200 p-5 flex justify-between items-center z-10">
+            <button onClick={onBack} className="flex items-center space-x-2 text-slate-500 hover:text-[#5c3a21] font-bold px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"><ArrowLeft size={20} /> <span>Voltar</span></button>
+            <div className="font-black text-[#5c3a21] text-lg uppercase flex items-center tracking-wide">
                 {formData.id ? `Edição: v${formData.version}.0` : 'Nova Ficha Técnica'}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
                {formData.id && (
                   <button onClick={() => {
                      showConfirm("Nova Versão", "Deseja salvar estas alterações como uma nova versão? (O histórico antigo será preservado).", () => {
                          const newVerData = { ...formData, version: formData.version + 1 };
                          handleExplicitSave(newVerData, `Versão ${newVerData.version}.0 criada com sucesso!`);
                      });
-                  }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow font-bold flex items-center space-x-2 text-sm"><SaveAll size={16} /> <span className="hidden md:inline">Salvar como Nova Versão</span></button>
+                  }} className="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-xl shadow-md font-bold flex items-center space-x-2 text-sm transition-transform hover:scale-105"><SaveAll size={18} /> <span className="hidden md:inline">Salvar como Nova Versão</span></button>
                )}
-               <button onClick={() => handleExplicitSave(formData)} className="bg-[#5c3a21] hover:bg-[#4a2e1a] text-white px-6 py-2 rounded shadow font-bold flex items-center space-x-2 text-sm"><Save size={16} /> <span>{formData.id ? 'Salvar Alterações' : 'Salvar Ficha'}</span></button>
+               <button onClick={() => handleExplicitSave(formData)} className="bg-[#5c3a21] hover:bg-[#4a2e1a] text-white px-6 py-2.5 rounded-xl shadow-md font-bold flex items-center space-x-2 text-sm transition-transform hover:scale-105"><Save size={18} /> <span>{formData.id ? 'Salvar Alterações' : 'Salvar Ficha'}</span></button>
             </div>
           </div>
 
-          <div className="flex border-b overflow-x-auto bg-gray-50 px-2 scrollbar-hide shrink-0">
+          <div className="flex border-b border-slate-200 overflow-x-auto bg-slate-50 px-4 pt-2 scrollbar-hide shrink-0 space-x-1">
             {tabs.map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-5 py-3 text-sm font-bold border-b-2 whitespace-nowrap ${activeTab === tab.id ? 'border-[#F4B400] text-[#5c3a21] bg-white' : 'border-transparent text-gray-500 hover:text-[#5c3a21]'}`}>{tab.id}. {tab.label}</button>
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-5 py-3 text-sm font-bold rounded-t-xl transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-[#5c3a21] border-t border-l border-r border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]' : 'text-slate-500 hover:text-[#5c3a21] hover:bg-slate-100'}`}>{tab.id}. {tab.label}</button>
             ))}
           </div>
 
-          <div className="flex-1 p-6 overflow-y-auto bg-white">
+          <div className="flex-1 p-8 overflow-y-auto bg-white">
             {activeTab === 1 && <TabGerais formData={formData} setFormData={setFormData} updateNested={updateNested} handleCoverImageUpload={handleCoverImageUpload} handleEditExistingImage={handleEditExistingImage} />}
             {activeTab === 2 && <TabTecnicos formData={formData} updateNested={updateNested} />}
             {activeTab === 3 && <TabIngredientes formData={formData} updateNested={updateNested} />}
@@ -770,49 +812,50 @@ const {
     };
 
     const TabGerais = ({ formData, setFormData, updateNested, handleCoverImageUpload, handleEditExistingImage }) => (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-         <div className="md:col-span-2 space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <InputGroup label="Nome do Produto" value={formData.name} onChange={v => setFormData({...formData, name: v})} />
-              <InputGroup label="Código Interno" value={formData.code} onChange={v => setFormData({...formData, code: v})} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+         <div className="md:col-span-2 space-y-6">
+            <div className="grid grid-cols-2 gap-5">
+              <InputGroup label="Nome Comercial do Produto" value={formData.name} onChange={v => setFormData({...formData, name: v})} />
+              <InputGroup label="Código Interno (SKU)" value={formData.code} onChange={v => setFormData({...formData, code: v})} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <InputGroup label="Categoria" value={formData.category} onChange={v => setFormData({...formData, category: v})} />
+            <div className="grid grid-cols-2 gap-5">
+              <InputGroup label="Categoria" value={formData.category} onChange={v => setFormData({...formData, category: v})} placeholder="Ex: Pães, Salgados..." />
               <InputGroup label="Marca" value={formData.general.brand} onChange={v => updateNested('general', 'brand', v)} />
             </div>
-            <div className="flex flex-col space-y-1">
-              <label className="text-xs font-bold text-gray-700 uppercase">Descrição Comercial</label>
-              <textarea rows="4" className="p-2 border rounded focus:ring-1 focus:ring-[#F4B400] outline-none text-sm" value={formData.general.description} onChange={e => updateNested('general', 'description', e.target.value)} />
+            <div className="flex flex-col space-y-1.5">
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Descrição Comercial (Aparece no Rótulo)</label>
+              <textarea rows="4" className="p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#F4B400] outline-none text-sm bg-slate-50 focus:bg-white" value={formData.general.description} onChange={e => updateNested('general', 'description', e.target.value)} />
             </div>
-            <div className="flex flex-col space-y-1 w-1/2">
-              <label className="text-xs font-bold text-gray-700 uppercase">Status do Produto</label>
-              <select className="p-2 border rounded focus:ring-1 outline-none text-sm" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
-                <option value="active">Ativo (Produção)</option>
-                <option value="draft">Rascunho</option>
+            <div className="flex flex-col space-y-1.5 w-1/2">
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Status do Produto</label>
+              <select className="p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#F4B400] outline-none text-sm font-medium bg-slate-50" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                <option value="active">Ativo (Em Produção)</option>
+                <option value="draft">Rascunho (Em Desenvolvimento)</option>
                 <option value="inactive">Inativo (Fora de Linha)</option>
               </select>
             </div>
          </div>
          <div>
-            <label className="text-xs font-bold text-gray-700 uppercase block mb-1">Capa do Produto</label>
-            <div className="flex gap-2 mb-2">
-              <input type="text" placeholder="URL da imagem..." value={formData.coverImage} onChange={e => setFormData({...formData, coverImage: e.target.value})} className="flex-1 p-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#F4B400] outline-none text-sm" />
-              <label className="bg-gray-200 text-gray-700 px-3 py-2 rounded text-sm font-bold cursor-pointer hover:bg-gray-300 flex items-center shrink-0">
-                <Upload size={16} className="mr-1"/> Local
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wide block mb-2">Imagem de Capa (Transparente ou Foto)</label>
+            <div className="flex gap-2 mb-3">
+              <input type="text" placeholder="URL da imagem (opcional)" value={formData.coverImage} onChange={e => setFormData({...formData, coverImage: e.target.value})} className="flex-1 p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#F4B400] outline-none text-sm bg-slate-50" />
+              <label className="bg-slate-800 text-white px-4 py-2.5 rounded-xl text-sm font-bold cursor-pointer hover:bg-slate-900 flex items-center shrink-0 transition-transform hover:scale-105 shadow-md">
+                <Upload size={18} className="mr-2"/> Subir
                 <input type="file" accept="image/*" className="hidden" onChange={handleCoverImageUpload}/>
               </label>
             </div>
-            <div className="border-2 border-dashed border-gray-300 h-56 flex flex-col items-center justify-center bg-gray-50 rounded relative overflow-hidden group">
+            {/* Fundo quadriculado (estilo Photoshop) para evidenciar se a foto tem fundo transparente */}
+            <div className="border-2 border-dashed border-slate-300 h-64 flex flex-col items-center justify-center rounded-2xl relative overflow-hidden group shadow-inner" style={{backgroundImage: 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkYNgfQEhjx8DAwEAURgOMakg3hIkNn0mEajgYGIg2hIExGhgNyWYIAGt3Gww9lG9XAAAAAElFTkSuQmCC")'}}>
                {formData.coverImage ? (
                   <>
-                    <img src={formData.coverImage} className="absolute inset-0 w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 rounded-lg">
-                      <button className="bg-[#F4B400] text-[#5c3a21] px-4 py-2 rounded text-xs font-bold shadow hover:bg-[#d9a000] flex items-center" onClick={() => handleEditExistingImage('cover', formData.coverImage)}><Edit size={16} className="mr-2"/> Editar Foto</button>
-                      <button className="bg-white text-red-600 px-4 py-2 rounded text-xs font-bold shadow hover:bg-gray-100 flex items-center" onClick={() => setFormData({...formData, coverImage: ''})}><Trash2 size={16} className="mr-2"/> Remover Foto</button>
+                    <img src={formData.coverImage} className="absolute inset-0 w-full h-full object-contain p-2" />
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-3">
+                      <button className="bg-[#F4B400] text-[#5c3a21] px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg hover:bg-[#e0a600] flex items-center transition-transform hover:scale-105" onClick={() => handleEditExistingImage('cover', formData.coverImage)}><Edit size={18} className="mr-2"/> Ajustar Imagem</button>
+                      <button className="bg-white text-red-600 px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg hover:bg-slate-100 flex items-center transition-transform hover:scale-105" onClick={() => setFormData({...formData, coverImage: ''})}><Trash2 size={18} className="mr-2"/> Remover Ficha</button>
                     </div>
                   </>
                ) : (
-                  <div className="text-center text-gray-400 text-sm"><ImageIcon size={32} className="mx-auto mb-2" /> Sem Imagem</div>
+                  <div className="text-center text-slate-400 font-medium bg-white/80 w-full h-full flex flex-col items-center justify-center backdrop-blur-sm"><ImageIcon size={40} className="mx-auto mb-3 text-slate-300" /> Nenhuma Imagem Selecionada</div>
                )}
             </div>
          </div>
@@ -820,33 +863,40 @@ const {
     );
 
     const TabTecnicos = ({ formData, updateNested }) => (
-      <div className="space-y-6">
+      <div className="space-y-8">
+        <h4 className="font-black text-[#5c3a21] text-lg border-b border-slate-200 pb-2">Especificações de Embalagem</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <InputGroup label="Unidades/Pacote" type="number" value={formData.technical.unitsPerPackage} onChange={v => updateNested('technical', 'unitsPerPackage', v)} />
-          <InputGroup label="Peso do Pacote" value={formData.technical.packageWeight} onChange={v => updateNested('technical', 'packageWeight', v)} />
-          <InputGroup label="Peso por Unidade" value={formData.technical.unitWeight} onChange={v => updateNested('technical', 'unitWeight', v)} />
-          <InputGroup label="Qtd por Tela" type="number" value={formData.technical.perTray} onChange={v => updateNested('technical', 'perTray', v)} />
+          <InputGroup label="Unidades por Pacote" type="number" value={formData.technical.unitsPerPackage} onChange={v => updateNested('technical', 'unitsPerPackage', v)} />
+          <InputGroup label="Peso do Pacote (ex: 5kg)" value={formData.technical.packageWeight} onChange={v => updateNested('technical', 'packageWeight', v)} />
+          <InputGroup label="Peso por Unidade (ex: 70g)" value={formData.technical.unitWeight} onChange={v => updateNested('technical', 'unitWeight', v)} />
+          <InputGroup label="Qtd por Tela/Assadeira" type="number" value={formData.technical.perTray} onChange={v => updateNested('technical', 'perTray', v)} />
         </div>
       </div>
     );
 
     const TabIngredientes = ({ formData, updateNested }) => (
       <div className="space-y-6">
-        <textarea rows="6" className="w-full p-3 border rounded outline-none text-sm" value={formData.ingredients.text} onChange={e => updateNested('ingredients', 'text', e.target.value)} placeholder="Texto descritivo de ingredientes..." />
-        <div className="bg-gray-50 p-4 rounded border grid grid-cols-2 gap-4">
-           <label className="flex items-center space-x-2 font-bold text-sm"><input type="checkbox" checked={formData.ingredients.containsGluten} onChange={e => updateNested('ingredients', 'containsGluten', e.target.checked)} /> <span>Contém Glúten</span></label>
-           <label className="flex items-center space-x-2 font-bold text-sm"><input type="checkbox" checked={formData.ingredients.containsLactose} onChange={e => updateNested('ingredients', 'containsLactose', e.target.checked)} /> <span>Contém Lactose</span></label>
-           <div className="col-span-2"><InputGroup label="Alérgicos" placeholder="Ex: CONTÉM DERIVADOS DE TRIGO..." value={formData.ingredients.allergensText} onChange={v => updateNested('ingredients', 'allergensText', v)} /></div>
+        <div className="flex flex-col space-y-1.5">
+           <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Lista de Ingredientes (Texto Completo)</label>
+           <textarea rows="6" className="w-full p-4 border border-slate-300 rounded-xl outline-none text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-[#F4B400]" value={formData.ingredients.text} onChange={e => updateNested('ingredients', 'text', e.target.value)} placeholder="Ex: Farinha de trigo enriquecida com ferro e ácido fólico, água, sal..." />
+        </div>
+        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 grid grid-cols-2 md:grid-cols-3 gap-6 items-center">
+           <label className="flex items-center space-x-3 font-bold text-sm bg-white p-3 border border-slate-200 rounded-xl cursor-pointer hover:border-[#F4B400] transition-colors"><input type="checkbox" checked={formData.ingredients.containsGluten} onChange={e => updateNested('ingredients', 'containsGluten', e.target.checked)} className="w-5 h-5 accent-[#F4B400]" /> <span>Contém Glúten</span></label>
+           <label className="flex items-center space-x-3 font-bold text-sm bg-white p-3 border border-slate-200 rounded-xl cursor-pointer hover:border-[#F4B400] transition-colors"><input type="checkbox" checked={formData.ingredients.containsLactose} onChange={e => updateNested('ingredients', 'containsLactose', e.target.checked)} className="w-5 h-5 accent-[#F4B400]" /> <span>Contém Lactose</span></label>
+           <div className="col-span-2 md:col-span-1"><InputGroup label="Aviso de Alérgicos" placeholder="Ex: DERIVADOS DE TRIGO E SOJA..." value={formData.ingredients.allergensText} onChange={v => updateNested('ingredients', 'allergensText', v)} /></div>
         </div>
       </div>
     );
 
     const TabConservacao = ({ formData, updateNested }) => (
-      <div className="grid grid-cols-2 gap-6">
-        <InputGroup label="Temp. Armazenamento" value={formData.conservation.frozen} onChange={v => updateNested('conservation', 'frozen', v)} />
-        <InputGroup label="Validade (Fechado)" value={formData.validity.package} onChange={v => updateNested('validity', 'package', v)} />
-        <InputGroup label="Validade (Aberto)" value={formData.conservation.openPackage} onChange={v => updateNested('conservation', 'openPackage', v)} />
-        <InputGroup label="Validade (Pós-Preparo)" value={formData.validity.postBaking} onChange={v => updateNested('validity', 'postBaking', v)} />
+      <div className="space-y-8">
+        <h4 className="font-black text-[#5c3a21] text-lg border-b border-slate-200 pb-2">Regras de Armazenamento e Shelf-Life</h4>
+        <div className="grid grid-cols-2 gap-8">
+          <InputGroup label="Temperatura de Armazenamento (Congelado)" value={formData.conservation.frozen} onChange={v => updateNested('conservation', 'frozen', v)} placeholder="Ex: -12°C ou mais frio" />
+          <InputGroup label="Validade na Embalagem Fechada" value={formData.validity.package} onChange={v => updateNested('validity', 'package', v)} placeholder="Ex: 90 dias" />
+          <InputGroup label="Validade após Embalagem Aberta" value={formData.conservation.openPackage} onChange={v => updateNested('conservation', 'openPackage', v)} placeholder="Ex: 15 dias" />
+          <InputGroup label="Validade Pós-Preparo/Assamento" value={formData.validity.postBaking} onChange={v => updateNested('validity', 'postBaking', v)} placeholder="Ex: Consumo Imediato" />
+        </div>
       </div>
     );
 
@@ -871,39 +921,49 @@ const {
       };
 
       return (
-        <div className="space-y-4">
-          <button onClick={addStep} className="bg-[#5c3a21] text-white px-3 py-1.5 rounded text-sm font-bold flex items-center mb-4"><Plus size={16}/> <span className="ml-1">Adicionar Etapa</span></button>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-6">
+          <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-200">
+             <h4 className="font-black text-[#5c3a21] flex items-center"><CheckCircle className="mr-2 text-green-600" size={20}/> Passo a Passo Operacional</h4>
+             <button onClick={addStep} className="bg-[#5c3a21] hover:bg-[#4a2e1a] text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center transition-transform hover:scale-105 shadow-md"><Plus size={18} className="mr-2"/> Adicionar Etapa</button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {formData.preparationSteps.map((step, index) => (
               <div 
                 key={step.id} 
-                className={`border p-3 relative bg-gray-50 flex shadow-sm rounded transition-all duration-200 ${draggedStepIndex === index ? 'opacity-40 scale-95 border-[#F4B400]' : ''}`}
+                className={`border border-slate-200 p-4 relative bg-white flex shadow-sm hover:shadow-md rounded-2xl transition-all duration-200 ${draggedStepIndex === index ? 'opacity-40 scale-95 border-[#F4B400]' : ''}`}
                 draggable onDragStart={() => handleDragStart(index)} onDragOver={handleDragOver} onDrop={() => handleDrop(index)}
               >
-                <div className="absolute top-2 left-2 text-gray-400 hover:text-[#5c3a21] cursor-grab active:cursor-grabbing z-10"><GripVertical size={18} /></div>
-                <button onClick={() => remStep(step.id)} className="absolute top-2 right-2 text-red-500 z-10 bg-white rounded-full p-1 shadow-sm hover:bg-red-50"><Trash2 size={16}/></button>
+                <div className="absolute top-3 left-3 text-slate-300 hover:text-[#5c3a21] cursor-grab active:cursor-grabbing z-10"><GripVertical size={20} /></div>
+                <button onClick={() => remStep(step.id)} className="absolute top-3 right-3 text-red-500 z-10 bg-white rounded-full p-1.5 shadow hover:bg-red-50 transition-colors"><Trash2 size={16}/></button>
                 
-                <div className="w-28 h-20 bg-white border border-dashed flex-shrink-0 relative flex items-center justify-center ml-6 mr-3 rounded overflow-hidden group">
+                <div className="w-32 h-24 bg-slate-50 border border-slate-200 flex-shrink-0 relative flex items-center justify-center ml-8 mr-4 rounded-xl overflow-hidden group" style={!step.image ? {} : {backgroundImage: 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkYNgfQEhjx8DAwEAURgOMakg3hIkNn0mEajgYGIg2hIExGhgNyWYIAGt3Gww9lG9XAAAAAElFTkSuQmCC")'}}>
                   {step.image ? (
                     <>
                       <img src={step.image} className="w-full h-full object-cover"/>
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity">
-                        <button onClick={() => handleEditExistingImage('step', step.image, step.id)} className="bg-[#F4B400] text-[#5c3a21] p-1.5 rounded shadow hover:bg-[#d9a000]"><Edit size={14}/></button>
-                        <label className="cursor-pointer bg-white text-gray-700 p-1.5 rounded shadow hover:bg-gray-100"><Upload size={14}/><input type="file" className="hidden" onChange={(e) => handleImageUpload(step.id, e)}/></label>
-                        <button onClick={() => updStep(step.id, 'image', '')} className="bg-white text-red-600 p-1.5 rounded shadow hover:bg-gray-100"><Trash2 size={14}/></button>
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-all backdrop-blur-sm">
+                        <button onClick={() => handleEditExistingImage('step', step.image, step.id)} className="bg-[#F4B400] text-[#5c3a21] p-2 rounded-lg shadow-md hover:bg-[#e0a600]"><Edit size={16}/></button>
+                        <label className="cursor-pointer bg-white text-gray-800 p-2 rounded-lg shadow-md hover:bg-gray-100"><Upload size={16}/><input type="file" className="hidden" onChange={(e) => handleImageUpload(step.id, e)}/></label>
                       </div>
                     </>
                   ) : (
-                    <label className="cursor-pointer text-[10px] uppercase font-bold text-gray-400 hover:text-[#F4B400] text-center w-full h-full flex flex-col items-center justify-center"><ImageIcon size={18} className="mb-1"/>+ Foto<input type="file" className="hidden" onChange={(e) => handleImageUpload(step.id, e)}/></label>
+                    <label className="cursor-pointer text-[10px] uppercase font-bold text-slate-400 hover:text-[#F4B400] text-center w-full h-full flex flex-col items-center justify-center transition-colors"><ImageIcon size={24} className="mb-2"/>Adicionar Foto<input type="file" className="hidden" onChange={(e) => handleImageUpload(step.id, e)}/></label>
                   )}
                 </div>
 
                 <div className="flex-1 flex flex-col">
-                  <input type="text" placeholder="Título da Etapa" value={step.title} onChange={e => updStep(step.id, 'title', e.target.value)} className="font-bold text-sm mb-1 bg-transparent border-b outline-none text-[#5c3a21]" />
-                  <textarea placeholder="Descrição do procedimento..." value={step.desc} onChange={e => updStep(step.id, 'desc', e.target.value)} className="text-xs bg-transparent outline-none flex-1 resize-none text-gray-700 mt-1" />
+                  <input type="text" placeholder={`Etapa ${index + 1} (ex: Descongelamento)`} value={step.title} onChange={e => updStep(step.id, 'title', e.target.value)} className="font-black text-sm mb-2 bg-transparent border-b border-slate-200 outline-none text-[#5c3a21] pb-1 placeholder:text-slate-300 focus:border-[#F4B400] transition-colors" />
+                  <textarea placeholder="Descreva os procedimentos detalhados..." value={step.desc} onChange={e => updStep(step.id, 'desc', e.target.value)} className="text-xs bg-transparent outline-none flex-1 resize-none text-slate-700 mt-1 placeholder:text-slate-300" />
                 </div>
               </div>
             ))}
+            
+            {formData.preparationSteps.length === 0 && (
+               <div className="col-span-1 md:col-span-2 text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+                  <Clock size={40} className="mx-auto mb-3 text-slate-300"/>
+                  <p className="text-slate-500 font-medium">Nenhuma etapa de preparo adicionada. Clique acima para começar.</p>
+               </div>
+            )}
           </div>
         </div>
       );
@@ -932,67 +992,96 @@ const {
        };
 
        return (
-         <div className="space-y-6 relative">
+         <div className="space-y-8 relative">
            {searchModal && (
-             <div className="absolute inset-0 bg-white z-50 p-4 border rounded shadow-2xl flex flex-col">
-                <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Buscar Ingrediente</h3><button onClick={()=>setSearchModal(false)}><X/></button></div>
-                <input type="text" placeholder="Nome..." value={term} onChange={e=>setTerm(e.target.value)} className="w-full p-2 border rounded mb-4"/>
-                <div className="flex-1 overflow-y-auto space-y-2">
-                   {filtered.map(i => <div key={i.id} className="border p-2 flex justify-between rounded items-center"><span className="text-sm font-bold">{i.name}</span><button onClick={()=>addItem(i)} className="bg-[#F4B400] px-3 py-1 rounded text-xs font-bold">Add</button></div>)}
+             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 p-4 flex items-center justify-center">
+                <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col h-[70vh] animate-[slideIn_0.2s_ease-out]">
+                   <div className="flex justify-between items-center mb-5 border-b pb-3"><h3 className="font-black text-lg text-[#5c3a21] flex items-center"><Search size={20} className="mr-2"/> Buscar Ingrediente</h3><button onClick={()=>setSearchModal(false)} className="text-slate-400 hover:text-[#F4B400] transition-colors"><X/></button></div>
+                   <input type="text" placeholder="Digite o nome..." value={term} onChange={e=>setTerm(e.target.value)} className="w-full p-3 border border-slate-300 rounded-xl mb-4 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-[#F4B400] outline-none"/>
+                   <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                      {filtered.length === 0 ? <p className="text-center text-slate-400 py-4 font-medium">Nenhum ingrediente encontrado.</p> : filtered.map(i => (
+                         <div key={i.id} className="border border-slate-200 bg-white p-3 flex justify-between rounded-xl items-center hover:border-[#F4B400] transition-colors group">
+                            <div><span className="text-sm font-bold text-gray-800 block">{i.name}</span><span className="text-[10px] text-slate-500 uppercase">{i.supplier || 'Sem fornecedor'}</span></div>
+                            <button onClick={()=>addItem(i)} className="bg-[#F4B400] text-[#5c3a21] px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-[#e0a600] transition-transform hover:scale-105">Adicionar</button>
+                         </div>
+                      ))}
+                   </div>
                 </div>
              </div>
            )}
 
-           <div className="bg-yellow-50/50 border rounded p-5">
-              <div className="flex justify-between items-center border-b pb-2 mb-4">
-                 <h4 className="font-bold text-[#5c3a21] flex"><Calculator className="mr-2" size={18}/> Formulação Automatizada</h4>
-                 <button onClick={()=>setSearchModal(true)} className="bg-[#F4B400] text-[#5c3a21] px-4 py-2 rounded text-xs font-bold">Buscar Ingrediente</button>
+           <div className="bg-gradient-to-br from-[#FFFDF5] to-white border border-[#F4B400]/40 shadow-sm rounded-2xl p-6">
+              <div className="flex justify-between items-center border-b border-slate-200 pb-3 mb-5">
+                 <h4 className="font-black text-[#5c3a21] text-lg flex items-center"><Calculator className="mr-2" size={22}/> Calculadora de Receituário (Automática)</h4>
+                 <button onClick={()=>setSearchModal(true)} className="bg-[#F4B400] hover:bg-[#e0a600] text-[#5c3a21] px-5 py-2.5 rounded-xl text-sm font-bold flex items-center shadow-md transition-transform hover:scale-105"><Plus size={16} className="mr-2"/> Adicionar Ingrediente</button>
               </div>
-              <div className="space-y-2 mb-4">
-                 {(!formData.formulation || formData.formulation.length === 0) ? <p className="text-xs text-gray-500 italic text-center py-2">Nenhum ingrediente.</p> : formData.formulation.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-white p-2 border rounded">
-                       <span className="text-sm font-bold text-gray-700">{item.name}</span>
-                       <div className="flex items-center space-x-2">
-                          <input type="number" value={item.qty} onChange={e => { const arr = [...formData.formulation]; arr[idx].qty = e.target.value; recalcFormulation(arr, formData.nutritional.finalYield, formData.nutritional.portion); }} className="w-20 p-1 border rounded text-right text-sm" />
-                          <span className="text-xs font-bold w-4">g</span>
-                          <button onClick={() => recalcFormulation(formData.formulation.filter((_, i) => i !== idx), formData.nutritional.finalYield, formData.nutritional.portion)} className="text-red-500"><Trash2 size={16}/></button>
-                       </div>
-                    </div>
-                 ))}
+              
+              <div className="bg-white border border-slate-200 rounded-xl p-2 mb-6">
+                 <table className="w-full text-sm text-left">
+                    <thead className="text-[10px] uppercase text-slate-500 font-bold bg-slate-50 border-b border-slate-200">
+                       <tr><th className="p-3">Ingrediente na Receita</th><th className="p-3 text-right">Qtd na Receita (g)</th><th className="p-3 w-16"></th></tr>
+                    </thead>
+                    <tbody>
+                       {(!formData.formulation || formData.formulation.length === 0) ? <tr><td colSpan="3" className="text-xs text-slate-400 italic text-center py-6 font-medium">Nenhum ingrediente adicionado para o cálculo.</td></tr> : formData.formulation.map((item, idx) => (
+                          <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+                             <td className="p-3 font-bold text-gray-700">{item.name}</td>
+                             <td className="p-3 text-right">
+                                <div className="flex items-center justify-end space-x-2">
+                                   <input type="number" value={item.qty} onChange={e => { const arr = [...formData.formulation]; arr[idx].qty = e.target.value; recalcFormulation(arr, formData.nutritional.finalYield, formData.nutritional.portion); }} className="w-24 p-2 border border-slate-200 rounded-lg text-right text-sm font-mono focus:ring-2 focus:ring-[#F4B400] outline-none bg-slate-50" />
+                                   <span className="text-xs font-bold text-slate-400">g</span>
+                                </div>
+                             </td>
+                             <td className="p-3 text-center"><button onClick={() => recalcFormulation(formData.formulation.filter((_, i) => i !== idx), formData.nutritional.finalYield, formData.nutritional.portion)} className="text-slate-300 hover:text-red-500 transition-colors p-1"><Trash2 size={18}/></button></td>
+                          </tr>
+                       ))}
+                    </tbody>
+                 </table>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white p-3 rounded border">
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                  <InputGroup label="Rendimento Final (g)" type="number" value={formData.nutritional.finalYield || ''} onChange={v => { updateNested('nutritional', 'finalYield', v); recalcFormulation(formData.formulation, v, formData.nutritional.portion); }} />
-                 <InputGroup label="Porção (g)" type="number" value={formData.nutritional.portion} onChange={v => { updateNested('nutritional', 'portion', v); recalcFormulation(formData.formulation, formData.nutritional.finalYield, v); }} />
-                 <InputGroup label="Medida Caseira" value={formData.nutritional.measure} onChange={v => updateNested('nutritional', 'measure', v)} />
-                 <InputGroup label="Porções/Emb." type="number" value={formData.nutritional.portionsPerPackage} onChange={v => updateNested('nutritional', 'portionsPerPackage', v)} />
+                 <InputGroup label="Porção Padrão (g)" type="number" value={formData.nutritional.portion} onChange={v => { updateNested('nutritional', 'portion', v); recalcFormulation(formData.formulation, formData.nutritional.finalYield, v); }} />
+                 <InputGroup label="Medida Caseira" value={formData.nutritional.measure} onChange={v => updateNested('nutritional', 'measure', v)} placeholder="Ex: 1 unidade" />
+                 <InputGroup label="Porções por Emb." type="number" value={formData.nutritional.portionsPerPackage} onChange={v => updateNested('nutritional', 'portionsPerPackage', v)} />
               </div>
            </div>
 
-           <h4 className="font-bold text-[#5c3a21] border-b pb-2">Tabela Nutricional (Calculada / Editável)</h4>
-           <table className="w-full text-sm border shadow-sm text-left">
-             <thead className="bg-[#5c3a21] text-white"><tr><th className="p-2">Nutriente</th><th className="p-2">Qtd na Porção</th></tr></thead>
-             <tbody>
-               <NutriRow label="Kcal" val={formData.nutritional.kcal} onChange={v=>updateNested('nutritional','kcal',v)} />
-               <NutriRow label="Carboidratos (g)" val={formData.nutritional.carbs} onChange={v=>updateNested('nutritional','carbs',v)} />
-               <NutriRow label="Proteínas (g)" val={formData.nutritional.proteins} onChange={v=>updateNested('nutritional','proteins',v)} />
-               <NutriRow label="Gorduras Totais (g)" val={formData.nutritional.totalFats} onChange={v=>updateNested('nutritional','totalFats',v)} />
-               <NutriRow label="Sódio (mg)" val={formData.nutritional.sodium} onChange={v=>updateNested('nutritional','sodium',v)} />
-             </tbody>
-           </table>
+           <div>
+              <h4 className="font-black text-[#5c3a21] text-lg border-b border-slate-200 pb-2 mb-4 flex items-center"><Activity className="mr-2 text-[#F4B400]" size={22}/> Tabela Nutricional Resultante (Calculada / Editável)</h4>
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                 <table className="w-full text-sm text-left">
+                   <thead className="bg-[#5c3a21] text-[#F4B400] uppercase text-[11px] font-black tracking-wider">
+                      <tr><th className="p-4">Componente Nutricional</th><th className="p-4">Quantidade na Porção ({formData.nutritional.portion || 0}g)</th></tr>
+                   </thead>
+                   <tbody>
+                     <NutriRow label="Valor Energético (Kcal)" val={formData.nutritional.kcal} onChange={v=>updateNested('nutritional','kcal',v)} />
+                     <NutriRow label="Carboidratos (g)" val={formData.nutritional.carbs} onChange={v=>updateNested('nutritional','carbs',v)} />
+                     <NutriRow label="Açúcares Totais (g)" val={formData.nutritional.totalSugars} onChange={v=>updateNested('nutritional','totalSugars',v)} />
+                     <NutriRow label="Açúcares Adicionados (g)" val={formData.nutritional.addedSugars} onChange={v=>updateNested('nutritional','addedSugars',v)} />
+                     <NutriRow label="Proteínas (g)" val={formData.nutritional.proteins} onChange={v=>updateNested('nutritional','proteins',v)} />
+                     <NutriRow label="Gorduras Totais (g)" val={formData.nutritional.totalFats} onChange={v=>updateNested('nutritional','totalFats',v)} />
+                     <NutriRow label="Gorduras Saturadas (g)" val={formData.nutritional.satFats} onChange={v=>updateNested('nutritional','satFats',v)} />
+                     <NutriRow label="Gorduras Trans (g)" val={formData.nutritional.transFats} onChange={v=>updateNested('nutritional','transFats',v)} />
+                     <NutriRow label="Fibra Alimentar (g)" val={formData.nutritional.fiber} onChange={v=>updateNested('nutritional','fiber',v)} />
+                     <NutriRow label="Sódio (mg)" val={formData.nutritional.sodium} onChange={v=>updateNested('nutritional','sodium',v)} />
+                   </tbody>
+                 </table>
+              </div>
+           </div>
          </div>
        );
     };
 
     const TabAprovacao = ({ formData, updateNested }) => (
-      <div className="bg-gray-50 border rounded-xl p-5">
-         <div className="flex justify-between items-center border-b pb-3 mb-4">
-            <h4 className="font-bold text-[#5c3a21]">Controle de Aprovação</h4>
-            <label className="flex items-center space-x-2 font-bold text-sm bg-white px-3 py-1.5 rounded border"><input type="checkbox" checked={formData.approval?.show || false} onChange={e => updateNested('approval', 'show', e.target.checked)} /><span>Exibir no PDF</span></label>
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+         <div className="flex justify-between items-center border-b border-slate-200 pb-4 mb-6">
+            <h4 className="font-black text-[#5c3a21] text-lg flex items-center"><CheckCircle className="mr-2 text-[#F4B400]"/> Controle de Assinaturas (Anexo de Qualidade)</h4>
+            <label className="flex items-center space-x-2 font-bold text-sm bg-white px-4 py-2 rounded-xl border border-slate-200 cursor-pointer shadow-sm hover:border-[#F4B400] transition-colors"><input type="checkbox" checked={formData.approval?.show || false} onChange={e => updateNested('approval', 'show', e.target.checked)} className="w-4 h-4 accent-[#F4B400]" /><span className="text-gray-700">Imprimir Assinaturas no PDF</span></label>
          </div>
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <InputGroup label="Elaborado por" value={formData.approval?.createdBy || ''} onChange={v => updateNested('approval', 'createdBy', v)} />
-            <InputGroup label="Revisado por" value={formData.approval?.reviewedBy || ''} onChange={v => updateNested('approval', 'reviewedBy', v)} />
-            <InputGroup label="Aprovado por" value={formData.approval?.approvedBy || ''} onChange={v => updateNested('approval', 'approvedBy', v)} />
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <InputGroup label="Elaborado por (Nome/Cargo)" value={formData.approval?.createdBy || ''} onChange={v => updateNested('approval', 'createdBy', v)} />
+            <InputGroup label="Revisado por (Nome/Cargo)" value={formData.approval?.reviewedBy || ''} onChange={v => updateNested('approval', 'reviewedBy', v)} />
+            <InputGroup label="Aprovado por (Nome/Cargo)" value={formData.approval?.approvedBy || ''} onChange={v => updateNested('approval', 'approvedBy', v)} />
          </div>
       </div>
     );
@@ -1024,78 +1113,81 @@ const {
       };
 
       return (
-        <div className="space-y-6 max-w-7xl mx-auto h-full flex flex-col pb-10">
+        <div className="space-y-6 max-w-7xl mx-auto h-full flex flex-col pb-10 animate-[slideIn_0.2s_ease-out]">
           
           {isModalOpen && (
-            <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90%] flex flex-col overflow-hidden">
-                <div className="bg-[#5c3a21] text-white p-4 flex justify-between items-center">
-                  <h3 className="font-bold flex items-center"><Package size={18} className="mr-2"/> {editingIng.id ? 'Editar Ingrediente' : 'Novo Ingrediente (Rótulo)'}</h3>
-                  <button onClick={() => setIsModalOpen(false)} className="hover:text-[#F4B400]"><X size={20}/></button>
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90%] flex flex-col overflow-hidden animate-[slideIn_0.2s_ease-out]">
+                <div className="bg-[#5c3a21] text-white p-5 flex justify-between items-center">
+                  <h3 className="font-bold flex items-center text-lg"><Package size={22} className="mr-2"/> {editingIng.id ? 'Editar Ingrediente' : 'Novo Ingrediente no Banco'}</h3>
+                  <button onClick={() => setIsModalOpen(false)} className="hover:text-[#F4B400] transition-colors"><X size={24}/></button>
                 </div>
-                <div className="p-4 bg-yellow-50 border-b border-yellow-200 text-sm text-[#5c3a21]">
-                  <p>Cadastre os dados nutricionais exatamente como constam na <strong>tabela da embalagem do seu fornecedor</strong>.</p>
+                <div className="p-4 bg-yellow-50 border-b border-yellow-200 text-sm text-[#5c3a21] font-medium flex items-start">
+                  <Info size={20} className="mr-2 shrink-0 mt-0.5 text-yellow-600"/>
+                  <p>Cadastre os dados nutricionais exatamente como constam na <strong>tabela da embalagem original do fornecedor</strong> para que o cálculo matemático da ficha seja perfeito.</p>
                 </div>
-                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
-                  <div className="grid grid-cols-2 gap-4">
+                <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-white">
+                  <div className="grid grid-cols-2 gap-6">
                     <InputGroup label="Nome do Ingrediente" value={editingIng.name} onChange={v => setEditingIng({...editingIng, name: v})} placeholder="Ex: Farinha de Trigo Especial" />
                     <InputGroup label="Fornecedor / Marca" value={editingIng.supplier} onChange={v => setEditingIng({...editingIng, supplier: v})} placeholder="Ex: Moinho X" />
                   </div>
                   
-                  <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
-                     <h4 className="font-bold text-[#5c3a21] border-b border-gray-200 pb-2 mb-4">Valores Nutricionais da Embalagem</h4>
-                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <InputGroup type="number" label="Porção na Embalagem (g)" value={editingIng.referencePortion} onChange={v => setEditingIng({...editingIng, referencePortion: v})} placeholder="Ex: 50" />
-                        <InputGroup type="number" label="Valor Energético (Kcal)" value={editingIng.kcal} onChange={v => setEditingIng({...editingIng, kcal: v})} />
+                  <div className="border border-slate-200 rounded-2xl p-6 bg-slate-50 shadow-inner">
+                     <h4 className="font-black text-[#5c3a21] border-b border-slate-200 pb-3 mb-5">Valores Nutricionais Originais</h4>
+                     <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                        <InputGroup type="number" label="Porção Ref. (g)" value={editingIng.referencePortion} onChange={v => setEditingIng({...editingIng, referencePortion: v})} placeholder="Ex: 50" />
+                        <InputGroup type="number" label="Kcal" value={editingIng.kcal} onChange={v => setEditingIng({...editingIng, kcal: v})} />
                         <InputGroup type="number" label="Carboidratos (g)" value={editingIng.carbs} onChange={v => setEditingIng({...editingIng, carbs: v})} />
-                        <InputGroup type="number" label="Açúcares Totais (g)" value={editingIng.totalSugars} onChange={v => setEditingIng({...editingIng, totalSugars: v})} />
-                        <InputGroup type="number" label="Açúcares Adicion. (g)" value={editingIng.addedSugars} onChange={v => setEditingIng({...editingIng, addedSugars: v})} />
+                        <InputGroup type="number" label="Açúcares Tot. (g)" value={editingIng.totalSugars} onChange={v => setEditingIng({...editingIng, totalSugars: v})} />
+                        <InputGroup type="number" label="Açúcares Adic. (g)" value={editingIng.addedSugars} onChange={v => setEditingIng({...editingIng, addedSugars: v})} />
                         <InputGroup type="number" label="Proteínas (g)" value={editingIng.proteins} onChange={v => setEditingIng({...editingIng, proteins: v})} />
                         <InputGroup type="number" label="Gorduras Totais (g)" value={editingIng.totalFats} onChange={v => setEditingIng({...editingIng, totalFats: v})} />
-                        <InputGroup type="number" label="Gorduras Saturadas (g)" value={editingIng.satFats} onChange={v => setEditingIng({...editingIng, satFats: v})} />
+                        <InputGroup type="number" label="Gorduras Sat. (g)" value={editingIng.satFats} onChange={v => setEditingIng({...editingIng, satFats: v})} />
                         <InputGroup type="number" label="Gorduras Trans (g)" value={editingIng.transFats} onChange={v => setEditingIng({...editingIng, transFats: v})} />
                         <InputGroup type="number" label="Fibra Alimentar (g)" value={editingIng.fiber} onChange={v => setEditingIng({...editingIng, fiber: v})} />
                         <InputGroup type="number" label="Sódio (mg)" value={editingIng.sodium} onChange={v => setEditingIng({...editingIng, sodium: v})} />
                      </div>
                   </div>
                 </div>
-                <div className="p-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
-                   <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded">Cancelar</button>
-                   <button onClick={handleSave} className="bg-[#5c3a21] text-white px-6 py-2 rounded shadow font-bold hover:bg-[#4a2e1a]">Salvar Ingrediente</button>
+                <div className="p-5 border-t border-slate-200 flex justify-end gap-4 bg-slate-50">
+                   <button onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-200 rounded-xl transition-colors">Cancelar</button>
+                   <button onClick={handleSave} className="bg-[#5c3a21] text-white px-7 py-2.5 rounded-xl shadow-md font-bold hover:bg-[#4a2e1a] transition-transform hover:scale-105">Salvar Ingrediente</button>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-            <div className="relative w-72">
-              <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-              <input type="text" placeholder="Buscar ingrediente..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F4B400] outline-none text-sm" />
+          <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-slate-200 shadow-sm gap-4">
+            <div className="relative w-80">
+              <Search className="absolute left-3.5 top-3 text-slate-400" size={18} />
+              <input type="text" placeholder="Buscar ingrediente..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-11 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#F4B400] outline-none text-sm transition-all bg-slate-50 focus:bg-white" />
             </div>
-            <button onClick={() => openModal()} className="bg-[#F4B400] hover:bg-[#d9a000] text-[#5c3a21] font-bold px-5 py-2 rounded-lg shadow flex items-center space-x-2">
-              <Plus size={18} /> <span>Novo Ingrediente</span>
+            <button onClick={() => openModal()} className="bg-[#F4B400] hover:bg-[#e0a600] text-[#5c3a21] font-bold px-6 py-2.5 rounded-xl shadow-md flex items-center space-x-2 transition-transform hover:scale-105">
+              <Plus size={20} /> <span>Novo Ingrediente</span>
             </button>
           </div>
           
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex-1 overflow-auto">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex-1 overflow-auto">
             <table className="w-full text-sm text-left">
-              <thead className="bg-[#5c3a21] text-white uppercase font-bold text-xs sticky top-0 z-10">
+              <thead className="bg-slate-50 text-slate-500 uppercase font-bold text-[11px] sticky top-0 z-10 tracking-wider border-b border-slate-200">
                 <tr>
                   <th className="px-6 py-4">Ingrediente</th>
-                  <th className="px-6 py-4">Fornecedor</th>
-                  <th className="px-6 py-4">Porção Ref.</th>
+                  <th className="px-6 py-4">Fornecedor / Marca</th>
+                  <th className="px-6 py-4">Porção Referência</th>
                   <th className="px-6 py-4 text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody>
-                {filtered.length === 0 ? <tr><td colSpan="4" className="text-center py-10 text-gray-500">Nenhum ingrediente cadastrado.</td></tr> : filtered.map(ing => (
-                  <tr key={ing.id} className="border-b border-gray-100 hover:bg-[#fffdf5]">
-                    <td className="px-6 py-4 font-bold text-[#5c3a21]">{ing.name}</td>
-                    <td className="px-6 py-4 text-gray-600">{ing.supplier || '-'}</td>
-                    <td className="px-6 py-4 text-gray-600">{ing.referencePortion}g</td>
-                    <td className="px-6 py-4 text-right space-x-1">
-                      <button onClick={() => openModal(ing)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"><Edit size={18} /></button>
-                      <button onClick={() => onDelete(ing.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 size={18} /></button>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.length === 0 ? <tr><td colSpan="4" className="text-center py-16 text-slate-400 font-medium text-base">Nenhum ingrediente cadastrado.</td></tr> : filtered.map(ing => (
+                  <tr key={ing.id} className="hover:bg-slate-50/80 transition-colors group">
+                    <td className="px-6 py-4 font-black text-gray-800 text-base">{ing.name}</td>
+                    <td className="px-6 py-4 text-slate-500 font-medium">{ing.supplier || '-'}</td>
+                    <td className="px-6 py-4 text-slate-500 font-medium"><span className="bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">{ing.referencePortion}g</span></td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end space-x-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => openModal(ing)} className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit size={18} /></button>
+                        <button onClick={() => onDelete(ing.id)} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18} /></button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1133,20 +1225,20 @@ const {
       );
 
       return (
-        <div className="w-full flex flex-col items-center pb-20">
-          <div className="no-print w-full max-w-[210mm] bg-white p-4 rounded-xl shadow border mb-6 flex justify-between items-center">
-            <button onClick={onBack} className="flex items-center space-x-2 text-sm"><ArrowLeft size={16} /> <span>Voltar à Edição</span></button>
-            <button onClick={() => window.print()} className="bg-[#5c3a21] text-[#F4B400] px-6 py-2 rounded font-black uppercase text-sm flex items-center space-x-2"><Printer size={18} /> <span>Imprimir A4</span></button>
+        <div className="w-full flex flex-col items-center pb-20 animate-[slideIn_0.2s_ease-out]">
+          <div className="no-print w-full max-w-[210mm] bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-8 flex justify-between items-center">
+            <button onClick={onBack} className="flex items-center space-x-2 text-sm font-bold text-slate-600 hover:bg-slate-100 px-4 py-2 rounded-xl transition-colors"><ArrowLeft size={18} /> <span>Voltar à Edição</span></button>
+            <button onClick={() => window.print()} className="bg-[#5c3a21] hover:bg-[#4a2e1a] text-white px-7 py-2.5 rounded-xl font-black uppercase text-sm flex items-center space-x-2 transition-transform hover:scale-105 shadow-md"><Printer size={20} /> <span>Imprimir Documento</span></button>
           </div>
           
-          <div className="pdf-container shadow-2xl relative bg-white">
-            
-            {/* ================= PÁGINA 1: FICHA TÉCNICA PRINCIPAL ================= */}
+          <div className="pdf-container shadow-2xl relative bg-white border border-slate-200">
+            {/* ================= PÁGINA 1 ================= */}
             <div>
-              <header className="flex justify-between items-end border-b-2 border-[#F4B400] pb-2 mb-3">
+              <header className="flex justify-between items-end border-b-[3px] border-[#F4B400] pb-2 mb-4">
                 <div className="flex items-center space-x-3">
+                   {/* Logo corrigida para impressão também */}
                    <div className="relative flex items-center mr-2">
-                       <img src={LOGO_URL} className="h-10 max-w-[150px] object-contain" alt="Logo" />
+                       <img src="logo.png" alt="Logo" className="h-10 max-w-[150px] object-contain" />
                    </div>
                    <div className="pl-3 border-l-2 border-gray-300"><p className="text-[9px] uppercase font-black text-gray-700 tracking-wider">Indústria de Massas Congeladas</p><p className="font-bold text-sm text-black leading-none">Controle de Qualidade</p></div>
                 </div>
@@ -1156,8 +1248,13 @@ const {
               <div className="block mb-2">
                 <div className="grid grid-cols-[1fr_1.3fr] gap-5 mb-2">
                   <div className="space-y-3">
-                    <div className="border-[3px] border-[#F4B400] rounded-lg overflow-hidden h-44 w-full">
-                       {ficha.coverImage ? <img src={ficha.coverImage} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-xs">Sem Imagem</div>}
+                    <div className="border-[3px] border-[#F4B400] rounded-lg overflow-hidden h-44 w-full relative">
+                       {ficha.coverImage ? (
+                          // A imagem com object-contain garante que a transparência PNG apareça sem fundo estranho. Fundo leve xadrez no pdf? Melhor branco limpo para impressão.
+                          <div className="w-full h-full bg-white flex items-center justify-center p-1"><img src={ficha.coverImage} className="max-w-full max-h-full object-contain drop-shadow-md" /></div>
+                       ) : (
+                          <div className="w-full h-full bg-gray-50 flex items-center justify-center text-gray-400 text-xs">Sem Imagem</div>
+                       )}
                     </div>
                     
                     <div className="bg-white rounded border border-gray-200 p-2 text-[10px] space-y-1.5 shadow-sm text-gray-800 leading-tight">
@@ -1184,10 +1281,10 @@ const {
                     <div>
                       <h3 className="font-black text-black bg-[#F4B400] px-2 py-1 text-center text-[10px] uppercase rounded-t border-b-2 border-[#5c3a21]">Armazenamento e Validade</h3>
                       <div className="border border-black bg-white p-2 text-[9px] text-gray-800 space-y-1.5 shadow-sm">
-                        <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">ARMAZENAMENTO (TEMP.):</span> <span>{ficha.conservation?.frozen || '-'}</span></p>
+                        <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">ARMAZ. (TEMP.):</span> <span>{ficha.conservation?.frozen || '-'}</span></p>
                         <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">VALIDADE (EMB. FECHADA):</span> <span>{ficha.validity?.package || '-'}</span></p>
                         <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">VALIDADE (EMB. ABERTA):</span> <span>{ficha.conservation?.openPackage || '-'}</span></p>
-                        <p className="flex justify-between pb-0.5"><span className="font-bold text-black">VALIDADE (APÓS PREPARO):</span> <span>{ficha.validity?.postBaking || '-'}</span></p>
+                        <p className="flex justify-between pb-0.5"><span className="font-bold text-black">VALIDADE (PÓS-PREPARO):</span> <span>{ficha.validity?.postBaking || '-'}</span></p>
                       </div>
                     </div>
                   </div>
@@ -1196,23 +1293,23 @@ const {
                     <section>
                       <h3 className="text-[13px] font-black text-[#5c3a21] border-b border-black pb-0.5 mb-1">Ingredientes</h3>
                       <p className="text-[10px] text-justify leading-snug">{ficha.ingredients?.text || '-'}</p>
-                      <p className="mt-1 text-[9px] font-black uppercase leading-tight bg-gray-100 p-1.5 rounded">{ficha.ingredients?.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients?.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients?.allergensText && `ALÉRGICOS: ${ficha.ingredients.allergensText}`}</p>
+                      <p className="mt-1 text-[9px] font-black uppercase leading-tight bg-gray-100 p-1.5 rounded border border-gray-200">{ficha.ingredients?.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients?.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients?.allergensText && `ALÉRGICOS: ${ficha.ingredients.allergensText}`}</p>
                     </section>
                     
                     <section className="avoid-break flex justify-start">
-                      <div className="w-[80%] font-sans text-black">
+                      <div className="w-[85%] font-sans text-black">
                         <table className="w-full text-[9px] border-collapse border border-black">
                           <thead>
                             <tr>
-                              <th colSpan="4" className="text-[11px] font-black pt-0.5 pb-0.5 text-center border-b border-black">INFORMAÇÃO NUTRICIONAL</th>
+                              <th colSpan="4" className="text-[11px] font-black pt-1 pb-1 text-center border-b border-black bg-gray-50">INFORMAÇÃO NUTRICIONAL</th>
                             </tr>
                             <tr>
-                              <th colSpan="4" className="font-normal text-left px-1 py-0.5 text-[9px] leading-tight border-b border-black">
+                              <th colSpan="4" className="font-normal text-left px-1.5 py-1 text-[9px] leading-tight border-b border-black">
                                 Porções por embalagem: {ficha.nutritional?.portionsPerPackage || 100}<br/>
                                 Porção: {ficha.nutritional?.portion || 0}g ({ficha.nutritional?.measure || '-'})
                               </th>
                             </tr>
-                            <tr className="border-b border-black font-black text-center bg-gray-50">
+                            <tr className="border-b border-black font-black text-center bg-gray-100">
                               <td className="py-0.5 px-1 text-left border-r border-black w-[45%]"></td>
                               <td className="py-0.5 px-1 border-r border-black w-[18%]">100 g</td>
                               <td className="py-0.5 px-1 border-r border-black w-[18%]">{ficha.nutritional?.portion || 0} g</td>
@@ -1232,20 +1329,20 @@ const {
                             <NutriPrintRow label="Sódio (mg)" val={ficha.nutritional?.sodium || 0} vd={Math.round(((ficha.nutritional?.sodium || 0) / 2000) * 100)} portion={ficha.nutritional?.portion} borderBottom={false} />
                           </tbody>
                         </table>
-                        <p className="text-[7px] mt-0.5 text-black">*Percentual de valores diários fornecidos pela porção.</p>
+                        <p className="text-[7px] mt-1 text-black font-medium">*Percentual de valores diários fornecidos pela porção.</p>
                       </div>
                     </section>
                   </div>
                 </div>
                 
                 {ficha.preparationSteps && ficha.preparationSteps.length > 0 && (
-                  <section className="mt-2 pt-2 border-t border-gray-200 avoid-break">
+                  <section className="mt-3 pt-3 border-t border-gray-300 avoid-break">
                     <h3 className="text-[13px] font-black text-[#5c3a21] border-b border-black pb-0.5 mb-2">Modo de Preparo</h3>
                     <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                       {ficha.preparationSteps.map((step, idx) => (
                         <div key={idx} className="relative avoid-break">
-                          <div className="font-black text-[11px] text-[#5c3a21] mb-0.5 leading-none"><span className="text-[#F4B400] text-sm mr-1">•</span>{step.title}:</div>
-                          {step.image && (<div className="w-full h-28 mb-1 bg-gray-100 rounded overflow-hidden border border-gray-200"><img src={step.image} className="w-full h-full object-cover" /></div>)}
+                          <div className="font-black text-[11px] text-[#5c3a21] mb-1 leading-none"><span className="text-[#F4B400] text-sm mr-1">•</span>{step.title}:</div>
+                          {step.image && (<div className="w-full h-28 mb-1.5 bg-gray-50 rounded border border-gray-200 overflow-hidden"><img src={step.image} className="w-full h-full object-contain" /></div>)}
                           <p className="text-[10px] text-justify leading-tight text-gray-800">{step.desc}</p>
                         </div>
                       ))}
@@ -1256,43 +1353,43 @@ const {
               <PrintFooter />
             </div>
 
-            {/* ================= PÁGINA 2: CONTROLE DE REVISÕES E APROVAÇÃO ================= */}
+            {/* ================= PÁGINA 2 ================= */}
             {(ficha.revisionHistory?.length > 0 || ficha.approval?.show) && (
               <div className="page-break pt-6 flex flex-col h-full min-h-[200mm]">
-                  <header className="flex justify-between items-end border-b-2 border-gray-300 pb-2 mb-6 opacity-60">
+                  <header className="flex justify-between items-end border-b-2 border-gray-300 pb-2 mb-6 opacity-70">
                     <div className="flex items-center space-x-3">
                        <div className="relative flex items-center">
-                           <img src={LOGO_URL} className="h-8 max-w-[120px] object-contain" alt="Logo" />
+                           <img src="logo.png" alt="Logo" className="h-8 max-w-[120px] object-contain" />
                        </div>
                        <div className="pl-3 border-l border-gray-300"><p className="text-[8px] uppercase font-black text-gray-700 tracking-wider">Ficha Técnica: {ficha.code}</p></div>
                     </div>
-                    <div className="text-right text-[9px] font-bold text-gray-500">Página 2 - Anexos Administrativos</div>
+                    <div className="text-right text-[9px] font-bold text-gray-600">Página 2 - Anexos Administrativos</div>
                   </header>
 
                   <div className="flex-1">
                       {ficha.revisionHistory?.length > 0 && (
-                          <div className="mb-6">
+                          <div className="mb-8">
                               <h3 className="text-[13px] font-black text-[#5c3a21] border-b border-black pb-1 mb-2">Histórico de Revisões</h3>
                               <table className="w-full text-[9px] border-collapse border border-black">
                                   <thead>
                                       <tr className="bg-gray-100">
-                                          <th className="border border-black p-1 text-center w-16">Data</th>
-                                          <th className="border border-black p-1 text-center w-10">Versão</th>
-                                          <th className="border border-black p-1 text-left">Motivos / Alterações</th>
-                                          <th className="border border-black p-1 text-center w-24">Elaborador</th>
-                                          <th className="border border-black p-1 text-center w-24">Revisor</th>
-                                          <th className="border border-black p-1 text-center w-24">Aprovador</th>
+                                          <th className="border border-black p-1.5 text-center w-16">Data</th>
+                                          <th className="border border-black p-1.5 text-center w-12">Versão</th>
+                                          <th className="border border-black p-1.5 text-left">Motivos / Alterações</th>
+                                          <th className="border border-black p-1.5 text-center w-24">Elaborador</th>
+                                          <th className="border border-black p-1.5 text-center w-24">Revisor</th>
+                                          <th className="border border-black p-1.5 text-center w-24">Aprovador</th>
                                       </tr>
                                   </thead>
                                   <tbody>
                                       {ficha.revisionHistory.map(rev => (
                                           <tr key={rev.id}>
-                                              <td className="border border-black p-1 text-center">{rev.date}</td>
-                                              <td className="border border-black p-1 text-center font-bold">v{rev.version}.0</td>
-                                              <td className="border border-black p-1">{rev.notes}</td>
-                                              <td className="border border-black p-1 text-center">{rev.createdBy}</td>
-                                              <td className="border border-black p-1 text-center">{rev.reviewedBy}</td>
-                                              <td className="border border-black p-1 text-center">{rev.approvedBy}</td>
+                                              <td className="border border-black p-1.5 text-center">{rev.date}</td>
+                                              <td className="border border-black p-1.5 text-center font-bold">v{rev.version}.0</td>
+                                              <td className="border border-black p-1.5">{rev.notes}</td>
+                                              <td className="border border-black p-1.5 text-center">{rev.createdBy}</td>
+                                              <td className="border border-black p-1.5 text-center">{rev.reviewedBy}</td>
+                                              <td className="border border-black p-1.5 text-center">{rev.approvedBy}</td>
                                           </tr>
                                       ))}
                                   </tbody>
@@ -1301,20 +1398,20 @@ const {
                       )}
 
                       {ficha.approval?.show && (
-                          <div className="border border-black p-3 bg-white mt-4 relative avoid-break">
-                              <div className="text-[9px] font-bold mb-8 flex justify-between border-b pb-1">
-                                  <span className="uppercase text-[#5c3a21]">Controle de Aprovação e Assinaturas</span>
+                          <div className="border border-black p-4 bg-gray-50 mt-4 relative avoid-break rounded-sm">
+                              <div className="text-[9px] font-bold mb-10 flex justify-between border-b border-gray-300 pb-2">
+                                  <span className="uppercase text-[#5c3a21] tracking-wide">Controle de Aprovação e Assinaturas</span>
                                   <span className="text-gray-600">Emissão: {new Date().toLocaleString('pt-BR')}</span>
                               </div>
-                              <div className="grid grid-cols-3 gap-6 text-center text-[9px] mt-8 pb-2">
+                              <div className="grid grid-cols-3 gap-6 text-center text-[10px] mt-10 pb-2">
                                   <div>
-                                      <div className="border-t border-black pt-1 mx-4 font-bold text-gray-800">{ficha.approval.createdBy || 'Elaborado por'}</div>
+                                      <div className="border-t border-black pt-1.5 mx-4 font-bold text-gray-800">{ficha.approval.createdBy || 'Elaborado por'}</div>
                                   </div>
                                   <div>
-                                      <div className="border-t border-black pt-1 mx-4 font-bold text-gray-800">{ficha.approval.reviewedBy || 'Revisado por'}</div>
+                                      <div className="border-t border-black pt-1.5 mx-4 font-bold text-gray-800">{ficha.approval.reviewedBy || 'Revisado por'}</div>
                                   </div>
                                   <div>
-                                      <div className="border-t border-black pt-1 mx-4 font-bold text-gray-800">{ficha.approval.approvedBy || 'Aprovado por'}</div>
+                                      <div className="border-t border-black pt-1.5 mx-4 font-bold text-gray-800">{ficha.approval.approvedBy || 'Aprovado por'}</div>
                                   </div>
                               </div>
                           </div>
