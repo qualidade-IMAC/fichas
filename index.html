@@ -59,7 +59,6 @@
       .avoid-break { break-inside: avoid !important; page-break-inside: avoid !important; }
     }
     
-    /* Animação para o Toast */
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
     .toast-enter { animation: slideIn 0.3s ease-out forwards; }
@@ -78,7 +77,6 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
     import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-    // Adicionado novos ícones para o painel
     const {
       LayoutDashboard, FileText, Plus, Search, Filter, Settings,
       Edit, Printer, CheckCircle, Info, Database, Upload, Trash2, ArrowLeft,
@@ -87,7 +85,7 @@
     } = Lucide;
 
     // ============================================================================
-    // 1. CONFIGURAÇÃO, CONSTANTES E DADOS
+    // 1. CONFIGURAÇÃO E DADOS
     // ============================================================================
     const firebaseConfig = {
       apiKey: "AIzaSyClLwKGarEcm6g467w-Esi7d7CEgL36mH0", 
@@ -115,8 +113,36 @@
 
     const mockFichas = [];
     const mockIngredients = [];
-
     const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
+    // COMPRESSOR DE IMAGENS (Evita erro de 1MB do Firestore e mantém transparência via WebP)
+    const compressImageToWebP = (file, callback) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) { height = Math.round(height * (MAX_WIDTH / width)); width = MAX_WIDTH; }
+          } else {
+            if (height > MAX_HEIGHT) { width = Math.round(width * (MAX_HEIGHT / height)); height = MAX_HEIGHT; }
+          }
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Converte para WebP com 75% de qualidade (Leve e suporta transparência)
+          callback(canvas.toDataURL('image/webp', 0.75));
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
 
     // ============================================================================
     // 2. SISTEMA PRINCIPAL (App)
@@ -131,7 +157,6 @@
       const [sidebarOpen, setSidebarOpen] = useState(true);
       const [isFallbackMode, setIsFallbackMode] = useState(false);
 
-      // Dialog & Toasts
       const [dialog, setDialog] = useState({ isOpen: false, type: 'alert', title: '', message: '', onConfirm: null });
       const [toasts, setToasts] = useState([]);
 
@@ -163,9 +188,7 @@
 
       useEffect(() => {
         if (!user) return;
-        if (isFallbackMode) {
-            setFichas(mockFichas); setCustomIngredients(mockIngredients); return;
-        }
+        if (isFallbackMode) { setFichas(mockFichas); setCustomIngredients(mockIngredients); return; }
 
         const unsubFichas = onSnapshot(collection(db, 'fichas'), (snap) => {
           setFichas(snap.empty ? [] : snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -186,16 +209,13 @@
         
         if (isFallbackMode) {
           setFichas(prev => isNew ? [payload, ...prev] : prev.map(f => f.id === saveId ? payload : f));
-          setCurrentView('list');
-          addToast(msgSuccess, 'success');
-          return;
+          setCurrentView('list'); addToast(msgSuccess, 'success'); return;
         }
         try {
           await setDoc(doc(db, 'fichas', saveId), payload);
-          setCurrentView('list');
-          addToast(msgSuccess, 'success');
+          setCurrentView('list'); addToast(msgSuccess, 'success');
         } catch (error) {
-          showMessage("Erro de Salvamento", error.message);
+          showMessage("Erro de Salvamento", "Ocorreu um erro. Verifique sua conexão ou tente novamente. Detalhe: " + error.message);
         }
       };
 
@@ -235,8 +255,7 @@
       };
 
       const handleNavigateToForm = (ficha = emptyFicha) => {
-        setSelectedFicha(ficha);
-        setCurrentView('form');
+        setSelectedFicha(ficha); setCurrentView('form');
       };
 
       if (loadingAuth) return <div className="h-screen w-full flex items-center justify-center bg-slate-50"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#F4B400]"></div></div>;
@@ -244,7 +263,6 @@
       return (
         <div className="flex h-screen bg-slate-50 text-gray-800 overflow-hidden print:h-auto print:overflow-visible print:block print:bg-white selection:bg-[#F4B400] selection:text-[#5c3a21]">
           
-          {/* TOASTS */}
           <div className="fixed top-4 right-4 z-[200] flex flex-col space-y-2 pointer-events-none">
              {toasts.map(toast => (
                 <div key={toast.id} className={`toast-enter bg-white p-4 rounded-xl shadow-2xl border-l-4 flex items-center space-x-3 pointer-events-auto max-w-sm transition-all duration-300 ${toast.type === 'success' ? 'border-green-500 text-green-800' : 'border-blue-500 text-blue-800'}`}>
@@ -254,7 +272,6 @@
              ))}
           </div>
 
-          {/* Dialog Modal Global */}
           {dialog.isOpen && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 transition-all">
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden animate-[slideIn_0.2s_ease-out]">
@@ -275,12 +292,11 @@
             </div>
           )}
 
-          {/* SIDEBAR COM A LOGO BRANCA (USANDO CSS FILTER) */}
+          {/* SIDEBAR COM A LOGO BRANCA */}
           <aside className={`no-print bg-[#5c3a21] text-white transition-all duration-300 ${sidebarOpen ? 'w-72' : 'w-20'} flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.15)] z-20 relative`}>
             <div className="p-4 flex items-center justify-center h-24 border-b border-white/10">
               <div className="flex items-center space-x-2 cursor-pointer transition-transform hover:scale-105" onClick={() => setCurrentView('dashboard')}>
                  {sidebarOpen ? (
-                    /* O Segredo: A classe brightness-0 invert transforma o marrom e o amarelo em 100% branco */
                     <img src="logo.png" alt="IMAC Logo" className="h-14 max-w-[180px] object-contain brightness-0 invert opacity-95 drop-shadow-sm" />
                  ) : (
                     <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center border border-white/20 shadow-sm hover:bg-white/20 transition-colors">
@@ -301,7 +317,6 @@
             </div>
           </aside>
 
-          {/* MAIN CONTENT AREA */}
           <main className="flex-1 flex flex-col h-full relative print:h-auto print:block">
             <header className="no-print h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-8 shadow-sm z-10">
               <h1 className="text-2xl font-black text-[#5c3a21] flex items-center tracking-tight">
@@ -318,9 +333,7 @@
                   <p className="text-sm font-bold text-[#5c3a21] leading-none">Equipe Qualidade</p>
                   <p className="text-xs text-gray-500 font-medium mt-1">IMAC Alimentos</p>
                 </div>
-                <div className="w-10 h-10 bg-[#F4B400] rounded-full flex items-center justify-center text-[#5c3a21] font-black shadow-sm border-2 border-white">
-                  EQ
-                </div>
+                <div className="w-10 h-10 bg-[#F4B400] rounded-full flex items-center justify-center text-[#5c3a21] font-black shadow-sm border-2 border-white">EQ</div>
               </div>
             </header>
 
@@ -336,7 +349,6 @@
       );
     }
 
-    // Componentes menores e SVG Helpers
     const ChevronLeft = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m15 18-6-6 6-6"/></svg>;
     const ChevronRight = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6"/></svg>;
 
@@ -349,9 +361,7 @@
 
     const StatCard = ({ title, value, icon, color, bgIcon }) => (
       <div className={`p-6 rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex items-center space-x-5 bg-white relative overflow-hidden`}>
-        <div className={`absolute -right-4 -top-4 opacity-5 ${color.replace('text-', 'text-')}`}>
-          {React.cloneElement(icon, { size: 100 })}
-        </div>
+        <div className={`absolute -right-4 -top-4 opacity-5 ${color.replace('text-', 'text-')}`}>{React.cloneElement(icon, { size: 100 })}</div>
         <div className={`p-4 rounded-xl ${bgIcon} ${color} shadow-inner z-10`}>{icon}</div>
         <div className="z-10">
           <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">{title}</p>
@@ -361,84 +371,64 @@
     );
 
     // ============================================================================
-    // DASHBOARD EXPANDIDO
+    // DASHBOARD
     // ============================================================================
     const DashboardView = ({ fichas, customIngredients, onNavigateToForm, onViewFichas, onViewIngredients }) => {
       const recentFichas = [...fichas].reverse().slice(0, 4);
-
       return (
         <div className="space-y-8 max-w-7xl mx-auto h-full animate-[slideIn_0.3s_ease-out]">
-          
-          {/* CARDS DE ESTATÍSTICAS */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <StatCard title="Total de Fichas" value={fichas.length} icon={<FileText size={28} />} color="text-[#5c3a21]" bgIcon="bg-orange-50" />
             <StatCard title="Fichas Ativas" value={fichas.filter(f=>f.status==='active').length} icon={<CheckCircle size={28} />} color="text-green-600" bgIcon="bg-green-50" />
             <StatCard title="Em Rascunho" value={fichas.filter(f=>f.status==='draft').length} icon={<Edit size={28} />} color="text-yellow-600" bgIcon="bg-yellow-50" />
             <StatCard title="Ingredientes" value={customIngredients.length} icon={<Package size={28} />} color="text-blue-600" bgIcon="bg-blue-50" />
           </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-             
-             {/* ÁREA DE AÇÕES RÁPIDAS */}
              <div className="lg:col-span-1 space-y-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                    <h3 className="text-lg font-black text-[#5c3a21] flex items-center mb-6"><Zap size={20} className="mr-2 text-[#F4B400]"/> Ações Rápidas</h3>
                    <div className="space-y-3">
                       <button onClick={() => onNavigateToForm()} className="w-full flex items-center justify-between p-4 bg-[#F4B400]/10 hover:bg-[#F4B400]/20 text-[#5c3a21] rounded-xl font-bold transition-all group border border-[#F4B400]/20">
-                         <div className="flex items-center"><Plus size={20} className="mr-3"/> Criar Ficha Técnica</div>
-                         <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/>
+                         <div className="flex items-center"><Plus size={20} className="mr-3"/> Criar Ficha Técnica</div><ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/>
                       </button>
                       <button onClick={onViewFichas} className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 text-gray-700 rounded-xl font-bold transition-all group border border-slate-200">
-                         <div className="flex items-center"><Search size={20} className="mr-3 text-gray-400"/> Consultar Fichas</div>
-                         <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/>
+                         <div className="flex items-center"><Search size={20} className="mr-3 text-gray-400"/> Consultar Fichas</div><ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/>
                       </button>
                       <button onClick={onViewIngredients} className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 text-gray-700 rounded-xl font-bold transition-all group border border-slate-200">
-                         <div className="flex items-center"><Database size={20} className="mr-3 text-gray-400"/> Gerenciar Ingredientes</div>
-                         <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/>
+                         <div className="flex items-center"><Database size={20} className="mr-3 text-gray-400"/> Gerenciar Ingredientes</div><ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/>
                       </button>
                    </div>
                 </div>
-
                 <div className="bg-gradient-to-br from-[#5c3a21] to-[#3a2212] p-6 rounded-2xl shadow-lg text-white relative overflow-hidden">
                    <div className="absolute -right-6 -bottom-6 opacity-10"><Info size={120}/></div>
                    <h4 className="font-black text-[#F4B400] flex items-center mb-2"><Info size={18} className="mr-2"/> Dica de Uso</h4>
-                   <p className="text-sm text-white/80 leading-relaxed font-medium">
-                     Mantenha seu <strong>Banco de Ingredientes</strong> atualizado com base nos rótulos de seus fornecedores. Isso garante que a Tabela Nutricional das Fichas seja gerada com precisão absoluta.
-                   </p>
+                   <p className="text-sm text-white/80 leading-relaxed font-medium">Mantenha seu <strong>Banco de Ingredientes</strong> atualizado com base nos rótulos de seus fornecedores para precisão nos cálculos.</p>
                 </div>
              </div>
-
-             {/* LISTA DE FICHAS RECENTES */}
              <div className="lg:col-span-2">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-full">
                    <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-lg font-black text-[#5c3a21] flex items-center"><Clock size={20} className="mr-2 text-gray-400"/> Adicionadas / Alteradas Recentemente</h3>
+                      <h3 className="text-lg font-black text-[#5c3a21] flex items-center"><Clock size={20} className="mr-2 text-gray-400"/> Atualizadas Recentemente</h3>
                       <button onClick={onViewFichas} className="text-sm font-bold text-blue-600 hover:text-blue-800">Ver todas</button>
                    </div>
-                   
                    <div className="space-y-3">
                       {recentFichas.length === 0 ? (
                          <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-                            <FileText size={40} className="mx-auto mb-3 text-slate-300"/>
-                            <p className="text-slate-500 font-medium">Nenhuma ficha criada ainda.</p>
+                            <FileText size={40} className="mx-auto mb-3 text-slate-300"/><p className="text-slate-500 font-medium">Nenhuma ficha criada ainda.</p>
                          </div>
                       ) : (
                          recentFichas.map(f => (
-                           <div key={f.id} className="flex items-center justify-between p-4 hover:bg-slate-50 border border-slate-100 rounded-xl transition-colors cursor-pointer group" onClick={() => {}}>
+                           <div key={f.id} className="flex items-center justify-between p-4 hover:bg-slate-50 border border-slate-100 rounded-xl transition-colors cursor-pointer group" onClick={() => onNavigateToForm(f)}>
                               <div className="flex items-center space-x-4">
                                  {f.coverImage ? (
                                     <img src={f.coverImage} className="w-12 h-12 rounded-lg object-cover shadow-sm border border-slate-200 group-hover:scale-105 transition-transform" />
                                  ) : (
-                                    <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center group-hover:scale-105 transition-transform">
-                                       <ImageIcon size={20} className="text-slate-400"/>
-                                    </div>
+                                    <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center group-hover:scale-105 transition-transform"><ImageIcon size={20} className="text-slate-400"/></div>
                                  )}
                                  <div>
                                     <h4 className="font-bold text-gray-800">{f.name}</h4>
                                     <div className="flex items-center text-xs text-gray-500 font-medium mt-0.5 space-x-2">
-                                       <span>{f.code}</span>
-                                       <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                                       <span className="text-[#5c3a21]">{f.category}</span>
+                                       <span>{f.code}</span><span className="w-1 h-1 rounded-full bg-gray-300"></span><span className="text-[#5c3a21]">{f.category}</span>
                                     </div>
                                  </div>
                               </div>
@@ -446,7 +436,7 @@
                                  <span className={`px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider border ${f.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : f.status === 'inactive' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
                                     {f.status === 'active' ? 'Ativo' : f.status === 'inactive' ? 'Inativo' : 'Rascunho'}
                                  </span>
-                                 <button onClick={(e) => { e.stopPropagation(); onNavigateToForm(f); }} className="p-2 text-gray-400 hover:text-[#5c3a21] hover:bg-[#F4B400]/20 rounded-lg transition-colors"><Edit size={18}/></button>
+                                 <button className="p-2 text-gray-400 hover:text-[#5c3a21] hover:bg-[#F4B400]/20 rounded-lg transition-colors"><Edit size={18}/></button>
                               </div>
                            </div>
                          ))
@@ -460,7 +450,7 @@
     };
 
     // ============================================================================
-    // 3. TELA DE LISTAGEM E EXPORTAÇÃO CSV
+    // LISTAGEM
     // ============================================================================
     const ListView = ({ fichas, onEdit, onPdf, onNew, onDelete, onDuplicate, addToast, showMessage }) => {
       const [search, setSearch] = useState('');
@@ -538,7 +528,7 @@
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.length === 0 ? <tr><td colSpan="5" className="text-center py-16 text-slate-400 font-medium text-base">Nenhuma ficha encontrada com estes filtros.</td></tr> : filtered.map(f => (
+                {filtered.length === 0 ? <tr><td colSpan="5" className="text-center py-16 text-slate-400 font-medium text-base">Nenhuma ficha encontrada.</td></tr> : filtered.map(f => (
                   <tr key={f.id} className="hover:bg-slate-50/80 transition-colors group">
                     <td className="px-6 py-4 font-medium flex items-center space-x-4">
                         {f.coverImage ? <img src={f.coverImage} className="w-12 h-12 rounded-lg object-cover border border-slate-200 shadow-sm" /> : <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200"><ImageIcon size={20} className="text-slate-300"/></div>}
@@ -569,7 +559,7 @@
     };
 
     // ============================================================================
-    // 4. TELA DE EDIÇÃO (FormView) E SEUS SUB-COMPONENTES
+    // 4. EDIÇÃO (FormView) E SEUS SUB-COMPONENTES
     // ============================================================================
     const InputGroup = ({ label, type = "text", value, onChange, placeholder }) => (
       <div className="flex flex-col space-y-1.5">
@@ -615,10 +605,8 @@
       }, [src, scale, offsetX, offsetY, brightness, contrast]);
 
       const handleConfirm = () => {
-        try { 
-            onSave(canvasRef.current.toDataURL('image/png')); 
-        } 
-        catch (error) { showMessage("Erro", "Não foi possível editar esta imagem. Faça upload local."); }
+        try { onSave(canvasRef.current.toDataURL('image/webp', 0.8)); } 
+        catch (error) { showMessage("Erro", "Não foi possível editar esta imagem."); }
       };
 
       return (
@@ -672,9 +660,7 @@
       });
 
       const [editorState, setEditorState] = useState({ isOpen: false, src: null, type: null, stepId: null });
-
       const tabs = [{ id: 1, label: 'Dados Gerais' }, { id: 2, label: 'Parâmetros Técnicos' }, { id: 3, label: 'Ingredientes/Rótulo' }, { id: 4, label: 'Conservação' }, { id: 5, label: 'Preparo' }, { id: 6, label: 'Tabela Nutricional' }, { id: 7, label: 'Aprovação' }];
-
       const updateNested = (cat, field, val) => setFormData(p => ({ ...p, [cat]: { ...p[cat], [field]: val } }));
 
       useEffect(() => {
@@ -682,9 +668,8 @@
         if (draft) {
            const parsed = JSON.parse(draft);
            if (!ficha.id || ficha.id === parsed.id) {
-               showConfirm("Recuperar Rascunho", "Encontramos alterações não salvas. Deseja recuperar os dados do último preenchimento automático?", () => {
-                   setFormData(parsed);
-                   addToast("Rascunho recuperado.", "info");
+               showConfirm("Recuperar Rascunho", "Encontramos alterações não salvas. Deseja recuperar?", () => {
+                   setFormData(parsed); addToast("Rascunho recuperado.", "info");
                });
            }
         }
@@ -702,20 +687,16 @@
 
       const handleImageUpload = (id, e) => {
         const file = e.target.files[0];
-        if (file) {
-          const r = new FileReader();
-          r.onloadend = () => setEditorState({ isOpen: true, src: r.result, type: 'step', stepId: id });
-          r.readAsDataURL(file);
-        }
+        if (file) compressImageToWebP(file, (dataUrl) => {
+           setEditorState({ isOpen: true, src: dataUrl, type: 'step', stepId: id });
+        });
       };
 
       const handleCoverImageUpload = (e) => {
         const file = e.target.files[0];
-        if (file) {
-          const r = new FileReader();
-          r.onloadend = () => setEditorState({ isOpen: true, src: r.result, type: 'cover', stepId: null });
-          r.readAsDataURL(file);
-        }
+        if (file) compressImageToWebP(file, (dataUrl) => {
+           setEditorState({ isOpen: true, src: dataUrl, type: 'cover', stepId: null });
+        });
       };
 
       const handleEditExistingImage = (type, src, stepId = null) => setEditorState({ isOpen: true, src: src, type: type, stepId: stepId });
@@ -776,11 +757,11 @@
             <div className="flex gap-3">
                {formData.id && (
                   <button onClick={() => {
-                     showConfirm("Nova Versão", "Deseja salvar estas alterações como uma nova versão? (O histórico antigo será preservado).", () => {
+                     showConfirm("Nova Versão", "Salvar alterações como uma nova versão? (Histórico antigo será preservado).", () => {
                          const newVerData = { ...formData, version: formData.version + 1 };
                          handleExplicitSave(newVerData, `Versão ${newVerData.version}.0 criada com sucesso!`);
                      });
-                  }} className="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-xl shadow-md font-bold flex items-center space-x-2 text-sm transition-transform hover:scale-105"><SaveAll size={18} /> <span className="hidden md:inline">Salvar como Nova Versão</span></button>
+                  }} className="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-xl shadow-md font-bold flex items-center space-x-2 text-sm transition-transform hover:scale-105"><SaveAll size={18} /> <span className="hidden md:inline">Salvar Nova Versão</span></button>
                )}
                <button onClick={() => handleExplicitSave(formData)} className="bg-[#5c3a21] hover:bg-[#4a2e1a] text-white px-6 py-2.5 rounded-xl shadow-md font-bold flex items-center space-x-2 text-sm transition-transform hover:scale-105"><Save size={18} /> <span>{formData.id ? 'Salvar Alterações' : 'Salvar Ficha'}</span></button>
             </div>
@@ -817,7 +798,7 @@
               <InputGroup label="Marca" value={formData.general.brand} onChange={v => updateNested('general', 'brand', v)} />
             </div>
             <div className="flex flex-col space-y-1.5">
-              <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Descrição Comercial (Aparece no Rótulo)</label>
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Descrição Comercial (Rótulo)</label>
               <textarea rows="4" className="p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#F4B400] outline-none text-sm bg-slate-50 focus:bg-white" value={formData.general.description} onChange={e => updateNested('general', 'description', e.target.value)} />
             </div>
             <div className="flex flex-col space-y-1.5 w-1/2">
@@ -838,11 +819,11 @@
                 <input type="file" accept="image/*" className="hidden" onChange={handleCoverImageUpload}/>
               </label>
             </div>
-            {/* Fundo quadriculado (estilo Photoshop) para evidenciar se a foto tem fundo transparente */}
+            
             <div className="border-2 border-dashed border-slate-300 h-64 flex flex-col items-center justify-center rounded-2xl relative overflow-hidden group shadow-inner" style={{backgroundImage: 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkYNgfQEhjx8DAwEAURgOMakg3hIkNn0mEajgYGIg2hIExGhgNyWYIAGt3Gww9lG9XAAAAAElFTkSuQmCC")'}}>
                {formData.coverImage ? (
                   <>
-                    <img src={formData.coverImage} className="absolute inset-0 w-full h-full object-contain p-2" />
+                    <img src={formData.coverImage} className="absolute inset-0 w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-3">
                       <button className="bg-[#F4B400] text-[#5c3a21] px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg hover:bg-[#e0a600] flex items-center transition-transform hover:scale-105" onClick={() => handleEditExistingImage('cover', formData.coverImage)}><Edit size={18} className="mr-2"/> Ajustar Imagem</button>
                       <button className="bg-white text-red-600 px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg hover:bg-slate-100 flex items-center transition-transform hover:scale-105" onClick={() => setFormData({...formData, coverImage: ''})}><Trash2 size={18} className="mr-2"/> Remover Ficha</button>
@@ -931,7 +912,7 @@
                 <div className="absolute top-3 left-3 text-slate-300 hover:text-[#5c3a21] cursor-grab active:cursor-grabbing z-10"><GripVertical size={20} /></div>
                 <button onClick={() => remStep(step.id)} className="absolute top-3 right-3 text-red-500 z-10 bg-white rounded-full p-1.5 shadow hover:bg-red-50 transition-colors"><Trash2 size={16}/></button>
                 
-                <div className="w-32 h-24 bg-slate-50 border border-slate-200 flex-shrink-0 relative flex items-center justify-center ml-8 mr-4 rounded-xl overflow-hidden group" style={!step.image ? {} : {backgroundImage: 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkYNgfQEhjx8DAwEAURgOMakg3hIkNn0mEajgYGIg2hIExGhgNyWYIAGt3Gww9lG9XAAAAAElFTkSuQmCC")'}}>
+                <div className="w-32 h-24 bg-slate-50 border border-slate-200 flex-shrink-0 relative flex items-center justify-center ml-8 mr-4 rounded-xl overflow-hidden group">
                   {step.image ? (
                     <>
                       <img src={step.image} className="w-full h-full object-cover"/>
@@ -946,16 +927,15 @@
                 </div>
 
                 <div className="flex-1 flex flex-col">
-                  <input type="text" placeholder={`Etapa ${index + 1} (ex: Descongelamento)`} value={step.title} onChange={e => updStep(step.id, 'title', e.target.value)} className="font-black text-sm mb-2 bg-transparent border-b border-slate-200 outline-none text-[#5c3a21] pb-1 placeholder:text-slate-300 focus:border-[#F4B400] transition-colors" />
-                  <textarea placeholder="Descreva os procedimentos detalhados..." value={step.desc} onChange={e => updStep(step.id, 'desc', e.target.value)} className="text-xs bg-transparent outline-none flex-1 resize-none text-slate-700 mt-1 placeholder:text-slate-300" />
+                  <input type="text" placeholder={`Etapa ${index + 1}`} value={step.title} onChange={e => updStep(step.id, 'title', e.target.value)} className="font-black text-sm mb-2 bg-transparent border-b border-slate-200 outline-none text-[#5c3a21] pb-1 placeholder:text-slate-300 focus:border-[#F4B400] transition-colors" />
+                  <textarea placeholder="Descrição dos procedimentos..." value={step.desc} onChange={e => updStep(step.id, 'desc', e.target.value)} className="text-xs bg-transparent outline-none flex-1 resize-none text-slate-700 mt-1 placeholder:text-slate-300" />
                 </div>
               </div>
             ))}
             
             {formData.preparationSteps.length === 0 && (
                <div className="col-span-1 md:col-span-2 text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
-                  <Clock size={40} className="mx-auto mb-3 text-slate-300"/>
-                  <p className="text-slate-500 font-medium">Nenhuma etapa de preparo adicionada. Clique acima para começar.</p>
+                  <Clock size={40} className="mx-auto mb-3 text-slate-300"/><p className="text-slate-500 font-medium">Nenhuma etapa adicionada. Clique acima para começar.</p>
                </div>
             )}
           </div>
@@ -1016,7 +996,7 @@
                        <tr><th className="p-3">Ingrediente na Receita</th><th className="p-3 text-right">Qtd na Receita (g)</th><th className="p-3 w-16"></th></tr>
                     </thead>
                     <tbody>
-                       {(!formData.formulation || formData.formulation.length === 0) ? <tr><td colSpan="3" className="text-xs text-slate-400 italic text-center py-6 font-medium">Nenhum ingrediente adicionado para o cálculo.</td></tr> : formData.formulation.map((item, idx) => (
+                       {(!formData.formulation || formData.formulation.length === 0) ? <tr><td colSpan="3" className="text-xs text-slate-400 italic text-center py-6 font-medium">Nenhum ingrediente adicionado.</td></tr> : formData.formulation.map((item, idx) => (
                           <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
                              <td className="p-3 font-bold text-gray-700">{item.name}</td>
                              <td className="p-3 text-right">
@@ -1041,7 +1021,7 @@
            </div>
 
            <div>
-              <h4 className="font-black text-[#5c3a21] text-lg border-b border-slate-200 pb-2 mb-4 flex items-center"><Activity className="mr-2 text-[#F4B400]" size={22}/> Tabela Nutricional Resultante (Calculada / Editável)</h4>
+              <h4 className="font-black text-[#5c3a21] text-lg border-b border-slate-200 pb-2 mb-4 flex items-center"><Activity className="mr-2 text-[#F4B400]" size={22}/> Tabela Nutricional (Calculada / Editável)</h4>
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                  <table className="w-full text-sm text-left">
                    <thead className="bg-[#5c3a21] text-[#F4B400] uppercase text-[11px] font-black tracking-wider">
@@ -1089,26 +1069,17 @@
       const [editingIng, setEditingIng] = useState(null);
 
       const emptyIng = { name: '', supplier: '', referencePortion: 100, kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 };
-
       const filtered = ingredients.filter(i => i.name.toLowerCase().includes(search.toLowerCase()) || (i.supplier && i.supplier.toLowerCase().includes(search.toLowerCase())));
 
-      const openModal = (ing = emptyIng) => {
-        setEditingIng({ ...ing });
-        setIsModalOpen(true);
-      };
+      const openModal = (ing = emptyIng) => { setEditingIng({ ...ing }); setIsModalOpen(true); };
 
       const handleSave = () => {
-        if (!editingIng.name || editingIng.referencePortion <= 0) {
-          showMessage("Aviso", "O nome é obrigatório e a porção deve ser maior que 0.");
-          return;
-        }
-        onSave(editingIng);
-        setIsModalOpen(false);
+        if (!editingIng.name || editingIng.referencePortion <= 0) { showMessage("Aviso", "O nome é obrigatório e a porção deve ser maior que 0."); return; }
+        onSave(editingIng); setIsModalOpen(false);
       };
 
       return (
         <div className="space-y-6 max-w-7xl mx-auto h-full flex flex-col pb-10 animate-[slideIn_0.2s_ease-out]">
-          
           {isModalOpen && (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90%] flex flex-col overflow-hidden animate-[slideIn_0.2s_ease-out]">
@@ -1156,20 +1127,13 @@
               <Search className="absolute left-3.5 top-3 text-slate-400" size={18} />
               <input type="text" placeholder="Buscar ingrediente..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-11 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#F4B400] outline-none text-sm transition-all bg-slate-50 focus:bg-white" />
             </div>
-            <button onClick={() => openModal()} className="bg-[#F4B400] hover:bg-[#e0a600] text-[#5c3a21] font-bold px-6 py-2.5 rounded-xl shadow-md flex items-center space-x-2 transition-transform hover:scale-105">
-              <Plus size={20} /> <span>Novo Ingrediente</span>
-            </button>
+            <button onClick={() => openModal()} className="bg-[#F4B400] hover:bg-[#e0a600] text-[#5c3a21] font-bold px-6 py-2.5 rounded-xl shadow-md flex items-center space-x-2 transition-transform hover:scale-105"><Plus size={20} /> <span>Novo Ingrediente</span></button>
           </div>
           
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex-1 overflow-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50 text-slate-500 uppercase font-bold text-[11px] sticky top-0 z-10 tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-4">Ingrediente</th>
-                  <th className="px-6 py-4">Fornecedor / Marca</th>
-                  <th className="px-6 py-4">Porção Referência</th>
-                  <th className="px-6 py-4 text-right">Ações</th>
-                </tr>
+                <tr><th className="px-6 py-4">Ingrediente</th><th className="px-6 py-4">Fornecedor / Marca</th><th className="px-6 py-4">Porção Referência</th><th className="px-6 py-4 text-right">Ações</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.length === 0 ? <tr><td colSpan="4" className="text-center py-16 text-slate-400 font-medium text-base">Nenhum ingrediente cadastrado.</td></tr> : filtered.map(ing => (
@@ -1241,27 +1205,29 @@
               <div className="block mb-2">
                 <div className="grid grid-cols-[1fr_1.3fr] gap-5 mb-2">
                   <div className="space-y-3">
-                    <div className="border-[3px] border-[#F4B400] rounded-lg overflow-hidden h-44 w-full relative">
+                    
+                    {/* VISUAL DA CAPA MELHORADO: Borda fina cinza, cantos arredondados suaves, imagem object-cover preenchendo tudo */}
+                    <div className="rounded-xl overflow-hidden h-52 w-full relative shadow-sm border border-gray-200 bg-gray-50">
                        {ficha.coverImage ? (
-                          <div className="w-full h-full bg-white flex items-center justify-center p-1"><img src={ficha.coverImage} className="max-w-full max-h-full object-contain drop-shadow-md" /></div>
+                          <img src={ficha.coverImage} className="w-full h-full object-cover" />
                        ) : (
-                          <div className="w-full h-full bg-gray-50 flex items-center justify-center text-gray-400 text-xs">Sem Imagem</div>
+                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">Sem Imagem</div>
                        )}
                     </div>
                     
-                    <div className="bg-white rounded border border-gray-200 p-2 text-[10px] space-y-1.5 shadow-sm text-gray-800 leading-tight">
+                    <div className="bg-white rounded-lg border border-gray-200 p-2.5 text-[10px] space-y-1.5 shadow-sm text-gray-800 leading-tight">
                       <p><span className="font-bold text-black">Unidades por Pacote:</span> Média de {ficha.technical?.unitsPerPackage || 0} un.</p>
                       <p><span className="font-bold text-black">Peso do Pacote:</span> {ficha.technical?.packageWeight || '-'}</p>
                       <p><span className="font-bold text-black">Qtd por tela:</span> {ficha.technical?.perTray || 0} un.</p>
                       
-                      <div className="border-t border-gray-200 pt-1.5 mt-1.5">
-                        <span className="font-bold text-black block mb-0.5">Parâmetros de Assamento:</span>
+                      <div className="border-t border-gray-200 pt-2 mt-2">
+                        <span className="font-bold text-black block mb-1">Parâmetros de Assamento:</span>
                         {(!ficha.technical?.ovens || ficha.technical.ovens.length === 0) ? (
                             <p className="text-gray-500 italic text-[9px]">Não informado</p>
                         ) : (
                             <div className="space-y-1">
                             {ficha.technical.ovens.map((oven, i) => (
-                                <div key={i} className="bg-gray-50 p-1 rounded border border-gray-200 text-[9px] leading-tight">
+                                <div key={i} className="bg-gray-50 p-1.5 rounded border border-gray-200 text-[9px] leading-tight">
                                     <span className="font-bold text-[#5c3a21]">{oven.name}:</span> {oven.temp} | {oven.time} | Vapor: {oven.vapor}
                                 </div>
                             ))}
@@ -1272,7 +1238,7 @@
                     
                     <div>
                       <h3 className="font-black text-black bg-[#F4B400] px-2 py-1 text-center text-[10px] uppercase rounded-t border-b-2 border-[#5c3a21]">Armazenamento e Validade</h3>
-                      <div className="border border-black bg-white p-2 text-[9px] text-gray-800 space-y-1.5 shadow-sm">
+                      <div className="border border-black bg-white p-2.5 text-[9px] text-gray-800 space-y-2 shadow-sm rounded-b">
                         <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">ARMAZ. (TEMP.):</span> <span>{ficha.conservation?.frozen || '-'}</span></p>
                         <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">VALIDADE (EMB. FECHADA):</span> <span>{ficha.validity?.package || '-'}</span></p>
                         <p className="flex justify-between border-b border-gray-100 pb-1"><span className="font-bold text-black">VALIDADE (EMB. ABERTA):</span> <span>{ficha.conservation?.openPackage || '-'}</span></p>
@@ -1285,7 +1251,7 @@
                     <section>
                       <h3 className="text-[13px] font-black text-[#5c3a21] border-b border-black pb-0.5 mb-1">Ingredientes</h3>
                       <p className="text-[10px] text-justify leading-snug">{ficha.ingredients?.text || '-'}</p>
-                      <p className="mt-1 text-[9px] font-black uppercase leading-tight bg-gray-100 p-1.5 rounded border border-gray-200">{ficha.ingredients?.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients?.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients?.allergensText && `ALÉRGICOS: ${ficha.ingredients.allergensText}`}</p>
+                      <p className="mt-2 text-[9px] font-black uppercase leading-tight bg-gray-50 p-2 rounded-lg border border-gray-200">{ficha.ingredients?.containsGluten ? 'CONTÉM GLÚTEN. ' : 'NÃO CONTÉM GLÚTEN. '}{ficha.ingredients?.containsLactose ? 'CONTÉM LACTOSE. ' : 'NÃO CONTÉM LACTOSE. '}{ficha.ingredients?.allergensText && `ALÉRGICOS: ${ficha.ingredients.allergensText}`}</p>
                     </section>
                     
                     <section className="avoid-break flex justify-start">
@@ -1329,12 +1295,15 @@
                 
                 {ficha.preparationSteps && ficha.preparationSteps.length > 0 && (
                   <section className="mt-3 pt-3 border-t border-gray-300 avoid-break">
-                    <h3 className="text-[13px] font-black text-[#5c3a21] border-b border-black pb-0.5 mb-2">Modo de Preparo</h3>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                    <h3 className="text-[13px] font-black text-[#5c3a21] border-b border-black pb-1 mb-3">Modo de Preparo</h3>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-5">
                       {ficha.preparationSteps.map((step, idx) => (
                         <div key={idx} className="relative avoid-break">
-                          <div className="font-black text-[11px] text-[#5c3a21] mb-1 leading-none"><span className="text-[#F4B400] text-sm mr-1">•</span>{step.title}:</div>
-                          {step.image && (<div className="w-full h-28 mb-1.5 bg-gray-50 rounded border border-gray-200 overflow-hidden"><img src={step.image} className="w-full h-full object-contain" /></div>)}
+                          <div className="font-black text-[11px] text-[#5c3a21] mb-1.5 leading-none"><span className="text-[#F4B400] text-sm mr-1">•</span>{step.title}:</div>
+                          
+                          {/* VISUAL DOS PASSOS MELHORADO: Ocupa toda largura com cantos redondos suaves e object-cover perfeito */}
+                          {step.image && (<div className="w-full h-32 mb-2 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden shadow-sm"><img src={step.image} className="w-full h-full object-cover" /></div>)}
+                          
                           <p className="text-[10px] text-justify leading-tight text-gray-800">{step.desc}</p>
                         </div>
                       ))}
