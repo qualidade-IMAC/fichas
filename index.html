@@ -78,7 +78,7 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
     import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-    // Adicionado novos ícones para o painel (Clock, Zap, Activity)
+    // Adicionado novos ícones para o painel
     const {
       LayoutDashboard, FileText, Plus, Search, Filter, Settings,
       Edit, Printer, CheckCircle, Info, Database, Upload, Trash2, ArrowLeft,
@@ -275,16 +275,16 @@
             </div>
           )}
 
-          {/* SIDEBAR COM CORREÇÃO DE TRANSPARÊNCIA DA LOGO */}
+          {/* SIDEBAR COM A LOGO BRANCA (USANDO CSS FILTER) */}
           <aside className={`no-print bg-[#5c3a21] text-white transition-all duration-300 ${sidebarOpen ? 'w-72' : 'w-20'} flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.15)] z-20 relative`}>
-            {/* O SEGREDO DA LOGO ESTÁ AQUI: SEM BG-WHITE, APENAS FLEX CENTER */}
             <div className="p-4 flex items-center justify-center h-24 border-b border-white/10">
               <div className="flex items-center space-x-2 cursor-pointer transition-transform hover:scale-105" onClick={() => setCurrentView('dashboard')}>
                  {sidebarOpen ? (
-                    <img src="logo.png" alt="IMAC Logo" className="h-14 max-w-[180px] object-contain drop-shadow-lg" />
+                    /* O Segredo: A classe brightness-0 invert transforma o marrom e o amarelo em 100% branco */
+                    <img src="logo.png" alt="IMAC Logo" className="h-14 max-w-[180px] object-contain brightness-0 invert opacity-95 drop-shadow-sm" />
                  ) : (
-                    <div className="w-12 h-12 bg-[#F4B400] rounded-xl flex items-center justify-center text-[#5c3a21] font-black shadow-lg">
-                        <img src="logo.png" alt="Icon" className="w-8 h-8 object-contain" />
+                    <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center border border-white/20 shadow-sm hover:bg-white/20 transition-colors">
+                        <img src="logo.png" alt="Icon" className="w-8 h-8 object-contain brightness-0 invert opacity-95" />
                     </div>
                  )}
               </div>
@@ -313,7 +313,6 @@
                 {isFallbackMode && <span className="ml-4 text-[11px] bg-red-100 text-red-600 px-3 py-1.5 rounded-full uppercase font-bold border border-red-200 flex items-center"><Activity size={14} className="mr-1"/> Modo Offline</span>}
               </h1>
               
-              {/* Profile Mockup for Aesthetics */}
               <div className="flex items-center space-x-4">
                 <div className="text-right hidden md:block">
                   <p className="text-sm font-bold text-[#5c3a21] leading-none">Equipe Qualidade</p>
@@ -362,10 +361,9 @@
     );
 
     // ============================================================================
-    // DASHBOARD EXPANDIDO (Mais atrativo e completo)
+    // DASHBOARD EXPANDIDO
     // ============================================================================
     const DashboardView = ({ fichas, customIngredients, onNavigateToForm, onViewFichas, onViewIngredients }) => {
-      // Pega as últimas 4 fichas alteradas (simulação por ID se não tiver timestamp preciso)
       const recentFichas = [...fichas].reverse().slice(0, 4);
 
       return (
@@ -381,7 +379,7 @@
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
              
-             {/* ÁREA DE AÇÕES RÁPIDAS (Ocupando espaço esquerdo) */}
+             {/* ÁREA DE AÇÕES RÁPIDAS */}
              <div className="lg:col-span-1 space-y-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                    <h3 className="text-lg font-black text-[#5c3a21] flex items-center mb-6"><Zap size={20} className="mr-2 text-[#F4B400]"/> Ações Rápidas</h3>
@@ -401,7 +399,6 @@
                    </div>
                 </div>
 
-                {/* Mini Dica ou Info (Ocupando mais espaço com elegância) */}
                 <div className="bg-gradient-to-br from-[#5c3a21] to-[#3a2212] p-6 rounded-2xl shadow-lg text-white relative overflow-hidden">
                    <div className="absolute -right-6 -bottom-6 opacity-10"><Info size={120}/></div>
                    <h4 className="font-black text-[#F4B400] flex items-center mb-2"><Info size={18} className="mr-2"/> Dica de Uso</h4>
@@ -411,7 +408,7 @@
                 </div>
              </div>
 
-             {/* LISTA DE FICHAS RECENTES (Ocupando espaço direito) */}
+             {/* LISTA DE FICHAS RECENTES */}
              <div className="lg:col-span-2">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-full">
                    <div className="flex justify-between items-center mb-6">
@@ -588,7 +585,6 @@
       </tr>
     );
 
-    // COMPONENTE DE EDIÇÃO DE IMAGEM (Ajustado para salvar em PNG e manter transparência)
     const ImageEditorModal = ({ src, onSave, onCancel, showMessage }) => {
       const canvasRef = useRef(null);
       const [scale, setScale] = useState(1);
@@ -620,7 +616,6 @@
 
       const handleConfirm = () => {
         try { 
-            // Mudado de image/jpeg para image/png para PRESERVAR transparência
             onSave(canvasRef.current.toDataURL('image/png')); 
         } 
         catch (error) { showMessage("Erro", "Não foi possível editar esta imagem. Faça upload local."); }
@@ -634,7 +629,6 @@
               <button onClick={onCancel} className="hover:text-[#F4B400] transition-colors"><X size={24}/></button>
             </div>
             <div className="flex flex-col md:flex-row p-6 gap-6 bg-slate-50 h-[60vh] md:h-auto overflow-y-auto">
-              {/* O fundo xadrez ajuda a ver onde é transparente */}
               <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-xl p-4" style={{backgroundImage: 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkYNgfQEhjx8DAwEAURgOMakg3hIkNn0mEajgYGIg2hIExGhgNyWYIAGt3Gww9lG9XAAAAAElFTkSuQmCC")'}}>
                  <canvas ref={canvasRef} width={800} height={600} className="w-full max-w-full h-auto shadow-lg bg-transparent" style={{ maxWidth: '600px', aspectRatio: '4/3' }}></canvas>
               </div>
@@ -1236,7 +1230,6 @@
             <div>
               <header className="flex justify-between items-end border-b-[3px] border-[#F4B400] pb-2 mb-4">
                 <div className="flex items-center space-x-3">
-                   {/* Logo corrigida para impressão também */}
                    <div className="relative flex items-center mr-2">
                        <img src="logo.png" alt="Logo" className="h-10 max-w-[150px] object-contain" />
                    </div>
@@ -1250,7 +1243,6 @@
                   <div className="space-y-3">
                     <div className="border-[3px] border-[#F4B400] rounded-lg overflow-hidden h-44 w-full relative">
                        {ficha.coverImage ? (
-                          // A imagem com object-contain garante que a transparência PNG apareça sem fundo estranho. Fundo leve xadrez no pdf? Melhor branco limpo para impressão.
                           <div className="w-full h-full bg-white flex items-center justify-center p-1"><img src={ficha.coverImage} className="max-w-full max-h-full object-contain drop-shadow-md" /></div>
                        ) : (
                           <div className="w-full h-full bg-gray-50 flex items-center justify-center text-gray-400 text-xs">Sem Imagem</div>
