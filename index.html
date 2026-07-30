@@ -127,11 +127,11 @@
       conservation: { frozen: '', refrigerated: '', ambient: '', openPackage: '', closedPackage: '' },
       validity: { package: '', postBaking: '', postDefrost: '' },
       preparationSteps: [], formulation: [], 
-      nutritional: { finalYield: '', portionsPerPackage: 100, portion: '100', measure: '', kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 },
+      nutritional: { finalYield: '', portionsPerPackage: 100, portion: '100', measure: '', kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0, showLupa: false },
       approval: { show: false, createdBy: '', reviewedBy: '', approvedBy: '' }, revisionHistory: []
     };
 
-    const emptyIng = { name: '', supplier: '', labelDesc: '', referencePortion: 100, kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 };
+    const emptyIng = { name: '', supplier: '', labelDesc: '', referencePortion: '100', kcal: 0, carbs: 0, totalSugars: 0, addedSugars: 0, proteins: 0, totalFats: 0, satFats: 0, transFats: 0, fiber: 0, sodium: 0 };
     const mockFichas = [];
     const mockIngredients = [];
 
@@ -837,7 +837,7 @@
           <div className="flex-1 p-8 overflow-y-auto bg-white">
             {activeTab === 1 && <TabGerais formData={formData} setFormData={setFormData} updateNested={updateNested} handleCoverImageUpload={handleCoverImageUpload} handleEditExistingImage={handleEditExistingImage} />}
             {activeTab === 2 && <TabTecnicos formData={formData} updateNested={updateNested} />}
-            {activeTab === 3 && <TabIngredientes formData={formData} updateNested={updateNested} />}
+            {activeTab === 3 && <TabIngredientes formData={formData} updateNested={updateNested} addToast={addToast} />}
             {activeTab === 4 && <TabConservacao formData={formData} updateNested={updateNested} />}
             {activeTab === 5 && <TabPreparo formData={formData} setFormData={setFormData} handleImageUpload={handleImageUpload} handleEditExistingImage={handleEditExistingImage} />}
             {activeTab === 6 && <TabNutricional formData={formData} setFormData={setFormData} updateNested={updateNested} customIngredients={customIngredients} recalcFormulation={recalcFormulation} />}
@@ -903,14 +903,14 @@
         <h4 className="font-black text-[#5c3a21] text-lg border-b border-slate-200 pb-2">Especificações de Embalagem</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <InputGroup label="Unidades por Pacote" inputMode="numeric" value={formData.technical.unitsPerPackage} onChange={v => updateNested('technical', 'unitsPerPackage', v)} />
-          <InputGroup label="Peso do Pacote (ex: 5kg)" value={formData.technical.packageWeight} onChange={v => updateNested('technical', 'packageWeight', v)} />
+          <InputGroup label="Peso por Pedido / Pacote" value={formData.technical.packageWeight} onChange={v => updateNested('technical', 'packageWeight', v)} />
           <InputGroup label="Peso por Unidade (ex: 70g)" value={formData.technical.unitWeight} onChange={v => updateNested('technical', 'unitWeight', v)} />
           <InputGroup label="Qtd por Tela/Assadeira" inputMode="numeric" value={formData.technical.perTray} onChange={v => updateNested('technical', 'perTray', v)} />
         </div>
       </div>
     );
 
-    const TabIngredientes = ({ formData, updateNested }) => {
+    const TabIngredientes = ({ formData, updateNested, addToast }) => {
       const handleGenerateText = () => {
          if (!formData.formulation || formData.formulation.length === 0) {
             alert("Adicione ingredientes na aba 'Tabela Nutricional' primeiro.");
@@ -925,13 +925,14 @@
          // Junta com vírgula e põe ponto final
          const finalText = textParts.filter(Boolean).join(', ') + '.';
          updateNested('ingredients', 'text', finalText);
+         addToast("Texto do rótulo gerado com sucesso!", "success");
       };
 
       return (
          <div className="space-y-6">
            <div className="flex justify-between items-end">
               <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Lista de Ingredientes (Texto Completo)</label>
-              <button onClick={handleGenerateText} className="bg-[#F4B400] hover:bg-[#e0a600] text-[#5c3a21] px-4 py-2 rounded-xl text-xs font-black shadow-sm transition-transform hover:scale-105 flex items-center"><Zap size={14} className="mr-2"/> Gerar Automático</button>
+              <button onClick={handleGenerateText} className="bg-[#F4B400] hover:bg-[#e0a600] text-[#5c3a21] px-4 py-2 rounded-xl text-xs font-black shadow-sm transition-transform hover:scale-105 flex items-center"><Zap size={14} className="mr-2"/> Gerar a partir da Receita</button>
            </div>
            <textarea rows="6" className="w-full p-4 border border-slate-300 rounded-xl outline-none text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-[#F4B400]" value={formData.ingredients.text} onChange={e => updateNested('ingredients', 'text', e.target.value)} placeholder="Ex: Farinha de trigo enriquecida com ferro..." />
            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 grid grid-cols-2 md:grid-cols-3 gap-6 items-center">
@@ -1103,12 +1104,17 @@
            </div>
 
            <div>
-              <h4 className="font-black text-[#5c3a21] text-lg border-b border-slate-200 pb-2 mb-4 flex items-center"><Activity className="mr-2 text-[#F4B400]" size={22}/> Tabela Nutricional</h4>
+              <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
+                 <h4 className="font-black text-[#5c3a21] text-lg flex items-center"><Activity className="mr-2 text-[#F4B400]" size={22}/> Tabela Nutricional</h4>
+                 <label className="flex items-center space-x-2 font-bold text-sm bg-white px-4 py-2 rounded-xl border border-slate-200 cursor-pointer shadow-sm hover:border-[#F4B400] transition-colors"><input type="checkbox" checked={formData.nutritional?.showLupa || false} onChange={e => updateNested('nutritional', 'showLupa', e.target.checked)} className="w-4 h-4 accent-[#F4B400]" /><span className="text-gray-700">Exibir Lupa (ANVISA)</span></label>
+              </div>
               
               {/* LUPA ANVISA (TELA DE EDIÇÃO) */}
-              <div className="flex justify-center mb-6">
-                 <LupaBadge altos={altos} variant="horizontal" />
-              </div>
+              {formData.nutritional?.showLupa && (
+                 <div className="flex justify-center mb-6">
+                    <LupaBadge altos={altos} variant="horizontal" />
+                 </div>
+              )}
 
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                  <table className="w-full text-sm text-left">
@@ -1184,7 +1190,7 @@
                   </div>
                   
                   <div className="border border-slate-200 rounded-2xl p-6 bg-slate-50 shadow-inner">
-                     <div className="flex items-center text-xs text-[#5c3a21] mb-5 bg-yellow-100 p-3 rounded-lg font-bold"><Info size={16} className="mr-2"/> Digite os valores como no rótulo da embalagem.</div>
+                     <div className="flex items-center text-xs text-[#5c3a21] mb-5 bg-yellow-100 p-3 rounded-lg font-bold"><Info size={16} className="mr-2"/> Digite os valores como no rótulo da embalagem original.</div>
                      <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                         <InputGroup inputMode="decimal" label="Porção Ref. (g)" value={editingIng.referencePortion} onChange={v => setEditingIng({...editingIng, referencePortion: v})} placeholder="Ex: 50" />
                         <InputGroup inputMode="decimal" label="Kcal" value={editingIng.kcal} onChange={v => setEditingIng({...editingIng, kcal: v})} />
@@ -1300,7 +1306,7 @@
                     
                     <div className="bg-white rounded-lg border border-gray-200 p-2.5 print:p-1.5 text-[10px] space-y-1.5 shadow-sm text-gray-800 leading-tight">
                       <p><span className="font-bold text-black">Unidades por Pacote:</span> Média de {ficha.technical?.unitsPerPackage || 0} un.</p>
-                      <p><span className="font-bold text-black">Peso do Pacote:</span> {ficha.technical?.packageWeight || '-'}</p>
+                      <p><span className="font-bold text-black">Peso por Pedido:</span> {ficha.technical?.packageWeight || '-'}</p>
                       <p><span className="font-bold text-black">Qtd por tela:</span> {ficha.technical?.perTray || 0} un.</p>
                       <div className="border-t border-gray-200 pt-2 mt-2">
                         <span className="font-bold text-black block mb-1">Parâmetros de Assamento:</span>
@@ -1325,10 +1331,12 @@
                         <p className="flex justify-between pb-0.5"><span className="font-bold text-black">VALIDADE (PÓS-PREPARO):</span> <span>{ficha.validity?.postBaking || '-'}</span></p>
                       </div>
 
-                      {/* NOVA LUPA VERTICAL ABAIXO DO ARMAZENAMENTO */}
-                      <div className="mt-4 print:mt-3 flex justify-center">
-                         <LupaBadge altos={altos} variant="vertical" />
-                      </div>
+                      {/* NOVA LUPA VERTICAL ABAIXO DO ARMAZENAMENTO (OPCIONAL) */}
+                      {ficha.nutritional?.showLupa && (
+                         <div className="mt-4 print:mt-3 flex justify-center">
+                            <LupaBadge altos={altos} variant="vertical" />
+                         </div>
+                      )}
                     </div>
                   </div>
 
