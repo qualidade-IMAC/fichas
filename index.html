@@ -109,7 +109,11 @@
     const parseNum = (val) => {
         if (val === null || val === undefined || val === '') return 0;
         if (typeof val === 'number') return val;
-        const str = String(val).replace(',', '.');
+        let str = String(val).trim();
+        // Se tiver vírgula, assume que é padrão BR: remove pontos de milhar e troca vírgula por ponto decimal
+        if (/,/.test(str)) {
+            str = str.replace(/\./g, '').replace(',', '.');
+        }
         const parsed = parseFloat(str);
         return isNaN(parsed) ? 0 : parsed;
     };
@@ -726,36 +730,31 @@
 
       // CORREÇÃO CRÍTICA AQUI: Uso de parseNum para evitar bugs com vírgula e zero-out do forms vazio
       const recalcFormulation = (form, yieldVal, portionVal) => {
-        const safeForm = form || [];
-        const sumWeight = safeForm.reduce((sum, item) => sum + parseNum(item.qty), 0);
-        const y = parseNum(yieldVal) || sumWeight;
-        const p = parseNum(portionVal) || 0;
+        if (!form || form.length === 0) return setFormData(prev => ({ ...prev, formulation: form }));
+        const sumWeight = form.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+        const y = parseFloat(yieldVal) || sumWeight;
+        const p = parseFloat(portionVal) || 0;
         const factor = y > 0 ? (p / y) : 0;
 
-        const totals = safeForm.reduce((acc, item) => {
-           const itemFactor = parseNum(item.qty) / 100;
-           acc.kcal += (parseNum(item.base.kcal)) * itemFactor; 
-           acc.carbs += (parseNum(item.base.carbs)) * itemFactor;
-           acc.totalSugars += (parseNum(item.base.totalSugars)) * itemFactor; 
-           acc.addedSugars += (parseNum(item.base.addedSugars)) * itemFactor;
-           acc.proteins += (parseNum(item.base.proteins)) * itemFactor; 
-           acc.totalFats += (parseNum(item.base.totalFats)) * itemFactor;
-           acc.satFats += (parseNum(item.base.satFats)) * itemFactor; 
-           acc.transFats += (parseNum(item.base.transFats)) * itemFactor;
-           acc.fiber += (parseNum(item.base.fiber)) * itemFactor; 
-           acc.sodium += (parseNum(item.base.sodium)) * itemFactor;
+        const totals = form.reduce((acc, item) => {
+           const itemFactor = Number(item.qty || 0) / 100;
+           acc.kcal += (item.base.kcal || 0) * itemFactor; acc.carbs += (item.base.carbs || 0) * itemFactor;
+           acc.totalSugars += (item.base.totalSugars || 0) * itemFactor; acc.addedSugars += (item.base.addedSugars || 0) * itemFactor;
+           acc.proteins += (item.base.proteins || 0) * itemFactor; acc.totalFats += (item.base.totalFats || 0) * itemFactor;
+           acc.satFats += (item.base.satFats || 0) * itemFactor; acc.transFats += (item.base.transFats || 0) * itemFactor;
+           acc.fiber += (item.base.fiber || 0) * itemFactor; acc.sodium += (item.base.sodium || 0) * itemFactor;
            return acc;
         }, { kcal:0, carbs:0, totalSugars:0, addedSugars:0, proteins:0, totalFats:0, satFats:0, transFats:0, fiber:0, sodium:0 });
 
         setFormData(prev => ({
-           ...prev, formulation: safeForm,
+           ...prev, formulation: form,
            nutritional: {
               ...prev.nutritional, finalYield: yieldVal, portion: portionVal,
-              kcal: round2(totals.kcal * factor).toFixed(1), carbs: round2(totals.carbs * factor).toFixed(1),
-              totalSugars: round2(totals.totalSugars * factor).toFixed(1), addedSugars: round2(totals.addedSugars * factor).toFixed(1),
-              proteins: round2(totals.proteins * factor).toFixed(1), totalFats: round2(totals.totalFats * factor).toFixed(1),
-              satFats: round2(totals.satFats * factor).toFixed(1), transFats: round2(totals.transFats * factor).toFixed(1),
-              fiber: round2(totals.fiber * factor).toFixed(1), sodium: round2(totals.sodium * factor).toFixed(1)
+              kcal: round2(totals.kcal * factor).toFixed(2), carbs: round2(totals.carbs * factor).toFixed(2),
+              totalSugars: round2(totals.totalSugars * factor).toFixed(2), addedSugars: round2(totals.addedSugars * factor).toFixed(2),
+              proteins: round2(totals.proteins * factor).toFixed(2), totalFats: round2(totals.totalFats * factor).toFixed(2),
+              satFats: round2(totals.satFats * factor).toFixed(2), transFats: round2(totals.transFats * factor).toFixed(2),
+              fiber: round2(totals.fiber * factor).toFixed(2), sodium: round2(totals.sodium * factor).toFixed(2)
            }
         }));
       };
