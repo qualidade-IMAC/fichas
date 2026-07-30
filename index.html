@@ -122,7 +122,7 @@
 
     const emptyFicha = {
       id: '', code: '', name: '', category: '', version: 1, status: 'draft', coverImage: '', general: { brand: 'IMAC', description: '' },
-      technical: { unitsPerPackage: 0, packageWeight: '', unitWeight: '', perTray: 0, ovens: [] },
+      technical: { unitsPerPackage: 0, packageWeight: '', orderWeight: '', unitWeight: '', perTray: 0, ovens: [] },
       ingredients: { text: '', containsGluten: false, containsLactose: false, allergensText: '' },
       conservation: { frozen: '', refrigerated: '', ambient: '', openPackage: '', closedPackage: '' },
       validity: { package: '', postBaking: '', postDefrost: '' },
@@ -901,11 +901,12 @@
     const TabTecnicos = ({ formData, updateNested }) => (
       <div className="space-y-8">
         <h4 className="font-black text-[#5c3a21] text-lg border-b border-slate-200 pb-2">Especificações de Embalagem</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
           <InputGroup label="Unidades por Pacote" inputMode="numeric" value={formData.technical.unitsPerPackage} onChange={v => updateNested('technical', 'unitsPerPackage', v)} />
-          <InputGroup label="Peso por Pedido / Pacote" value={formData.technical.packageWeight} onChange={v => updateNested('technical', 'packageWeight', v)} />
-          <InputGroup label="Peso por Unidade (ex: 70g)" value={formData.technical.unitWeight} onChange={v => updateNested('technical', 'unitWeight', v)} />
-          <InputGroup label="Qtd por Tela/Assadeira" inputMode="numeric" value={formData.technical.perTray} onChange={v => updateNested('technical', 'perTray', v)} />
+          <InputGroup label="Peso do Pacote (Ex: 5kg)" value={formData.technical.packageWeight} onChange={v => updateNested('technical', 'packageWeight', v)} />
+          <InputGroup label="Peso por Pedido (Ex: 10kg)" value={formData.technical.orderWeight} onChange={v => updateNested('technical', 'orderWeight', v)} />
+          <InputGroup label="Peso por Unid. (ex: 70g)" value={formData.technical.unitWeight} onChange={v => updateNested('technical', 'unitWeight', v)} />
+          <InputGroup label="Qtd por Tela" inputMode="numeric" value={formData.technical.perTray} onChange={v => updateNested('technical', 'perTray', v)} />
         </div>
       </div>
     );
@@ -1306,8 +1307,10 @@
                     
                     <div className="bg-white rounded-lg border border-gray-200 p-2.5 print:p-1.5 text-[10px] space-y-1.5 shadow-sm text-gray-800 leading-tight">
                       <p><span className="font-bold text-black">Unidades por Pacote:</span> Média de {ficha.technical?.unitsPerPackage || 0} un.</p>
-                      <p><span className="font-bold text-black">Peso por Pedido:</span> {ficha.technical?.packageWeight || '-'}</p>
+                      <p><span className="font-bold text-black">Peso do Pacote:</span> {ficha.technical?.packageWeight || '-'}</p>
+                      <p><span className="font-bold text-black">Peso por Pedido:</span> {ficha.technical?.orderWeight || '-'}</p>
                       <p><span className="font-bold text-black">Qtd por tela:</span> {ficha.technical?.perTray || 0} un.</p>
+                      
                       <div className="border-t border-gray-200 pt-2 mt-2">
                         <span className="font-bold text-black block mb-1">Parâmetros de Assamento:</span>
                         {(!ficha.technical?.ovens || ficha.technical.ovens.length === 0) ? ( <p className="text-gray-500 italic text-[9px]">Não informado</p> ) : (
