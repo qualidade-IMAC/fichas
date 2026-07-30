@@ -837,7 +837,7 @@
           <div className="flex-1 p-8 overflow-y-auto bg-white">
             {activeTab === 1 && <TabGerais formData={formData} setFormData={setFormData} updateNested={updateNested} handleCoverImageUpload={handleCoverImageUpload} handleEditExistingImage={handleEditExistingImage} />}
             {activeTab === 2 && <TabTecnicos formData={formData} setFormData={setFormData} updateNested={updateNested} />}
-            {activeTab === 3 && <TabIngredientes formData={formData} updateNested={updateNested} addToast={addToast} />}
+            {activeTab === 3 && <TabIngredientes formData={formData} updateNested={updateNested} addToast={addToast} customIngredients={customIngredients} />}
             {activeTab === 4 && <TabConservacao formData={formData} updateNested={updateNested} />}
             {activeTab === 5 && <TabPreparo formData={formData} setFormData={setFormData} handleImageUpload={handleImageUpload} handleEditExistingImage={handleEditExistingImage} />}
             {activeTab === 6 && <TabNutricional formData={formData} setFormData={setFormData} updateNested={updateNested} customIngredients={customIngredients} recalcFormulation={recalcFormulation} />}
@@ -958,7 +958,7 @@
       );
     };
 
-    const TabIngredientes = ({ formData, updateNested, addToast }) => {
+    const TabIngredientes = ({ formData, updateNested, addToast, customIngredients }) => {
       const handleGenerateText = () => {
          if (!formData.formulation || formData.formulation.length === 0) {
             alert("Adicione ingredientes na aba 'Tabela Nutricional' primeiro.");
@@ -967,8 +967,18 @@
          // Ordena do mais pesado pro mais leve (exigência Anvisa)
          const sorted = [...formData.formulation].sort((a, b) => parseNum(b.qty) - parseNum(a.qty));
          
-         // Pega a descrição customizada ou o próprio nome
-         const textParts = sorted.map(item => item.labelDesc ? item.labelDesc.trim() : item.name.trim());
+         // Busca a descrição mais atualizada direto do banco de dados em tempo real
+         const textParts = sorted.map(item => {
+            const liveIng = customIngredients.find(ing => ing.id === item.ingId || ing.name === item.name);
+            
+            // Prioridade 1: Descrição atualizada no Banco. Prioridade 2: Descrição da Ficha. Prioridade 3: Nome base.
+            if (liveIng && liveIng.labelDesc && liveIng.labelDesc.trim() !== '') {
+                return liveIng.labelDesc.trim();
+            } else if (item.labelDesc && item.labelDesc.trim() !== '') {
+                return item.labelDesc.trim();
+            }
+            return item.name.trim();
+         });
          
          // Junta com vírgula e põe ponto final
          const finalText = textParts.filter(Boolean).join(', ') + '.';
